@@ -84,6 +84,7 @@ public class HotelPanel extends JPanel {
             case "Lobby": return "Lobby";
             case "Lift": return "Lift";
             case "Staircase": return "Trap";
+            case "Storage": return "Opslag";
             default: return area.getAreaType();
         }
     }
@@ -105,6 +106,7 @@ public class HotelPanel extends JPanel {
             case "Restaurant": return new Color(255, 100, 100);
             case "Cinema":   return new Color(200, 100, 200);
             case "Fitness":  return new Color(100, 220, 180);
+            case "Storage": return new Color(180, 140, 100);
             default:         return Color.WHITE;
         }
     }

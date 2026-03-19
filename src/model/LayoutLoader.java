@@ -58,27 +58,26 @@ public class LayoutLoader {
             case "Restaurant": return "R";
             case "Fitness": return "FT";
             case "Lobby": return "L";
-            case "Lift": return "F";
-            case "Staircase": return "T";
+            case "Lift": return "Lift";
+            case "Staircase": return "Trap";
+            case "Storage": return "S";
             default: return "?";
         }
     }
 
     public static void valideerLayout(String[][] grid) throws Exception {
-        boolean heeftLobby = false;
         boolean heeftLift = false;
         boolean heeftTrap = false;
 
         for (String[] rij : grid) {
             for (String vakje : rij) {
-                if (vakje.equals("L")) heeftLobby = true;
                 if (vakje.equals("F")) heeftLift = true;
                 if (vakje.equals("T")) heeftTrap = true;
             }
         }
 
-        if (!heeftLobby) throw new Exception("Layout mist een lobby!");
         if (!heeftLift) throw new Exception("Layout mist een lift!");
         if (!heeftTrap) throw new Exception("Layout mist een trap!");
-    }
+        }
+
 }
