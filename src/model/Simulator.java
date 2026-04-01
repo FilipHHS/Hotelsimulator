@@ -31,6 +31,13 @@ public class Simulator {
     public void tick() {
         if (!running) return;
 
+        /// new
+        int testX = 0;
+        testX++;
+        System.out.println("Persoon beweegt naar: " + testX);
+
+        hotelPanel.repaint();
+
         // Update all personen (guests move according to their logic)
         for (Persoon persoon : hotel.getPersonen()) {
             if (persoon instanceof Gast) {
