@@ -1,5 +1,6 @@
 import model.Hotel;
 import model.LayoutLoader;
+import model.Gast;
 import ui.HotelPanel;
 import model.Simulator;
 
@@ -34,21 +35,37 @@ public class main {
                 loadButton.addActionListener(e -> loadLayout());
                 controlPanel.add(loadButton);
 
-                // pause knop
+                // pause knop (declare first, configure later)
                 JButton pauseButton = new JButton("Pause");
-                controlPanel.add(pauseButton);
+                pauseButton.setEnabled(false);
 
+                // Start knop
+                JButton startButton = new JButton("Start");
+                startButton.addActionListener(e -> {
+                    if (!simulator.isRunning()) {
+                        simulator.start();
+                        startButton.setEnabled(false);
+                        pauseButton.setEnabled(true);
+                        statusLabel.setText("Simulatie actief");
+                    }
+                });
+                controlPanel.add(startButton);
+
+                // Configure pause button
                 pauseButton.addActionListener(e -> {
                     if (simulator.isRunning()) {
                         simulator.pause();
                         pauseButton.setText("Resume");
+                        startButton.setEnabled(true);
                         statusLabel.setText("Simulatie gepauzeerd");
                     } else {
                         simulator.start();
                         pauseButton.setText("Pause");
+                        startButton.setEnabled(false);
                         statusLabel.setText("Simulatie actief");
                     }
                 });
+                controlPanel.add(pauseButton);
 
                 // status label
                 statusLabel = new JLabel("Hotel laden...");
@@ -58,11 +75,14 @@ public class main {
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
                 hotelPanel = new HotelPanel(hotel);
 
-                // 🔥 simulator hier maken (BELANGRIJK)
-                simulator = new Simulator(hotelPanel);
-                simulator.start();
+                // Voeg test gasten toe
+                addTestGuests(hotel);
 
-                statusLabel.setText("Hotel geladen: " + layouts[0]);
+                // 🔥 simulator hier maken (BELANGRIJK)
+                simulator = new Simulator(hotel, hotelPanel);
+                simulator.pause(); // Start in paused state
+
+                statusLabel.setText("Hotel geladen: " + layouts[0] + " (Klik 'Start' om de simulatie te beginnen)");
 
                 frame.add(controlPanel, "North");
                 frame.add(hotelPanel, "Center");
@@ -100,14 +120,32 @@ public class main {
             Hotel newHotel = LayoutLoader.laadLayout("layouts/" + selectedLayout);
             hotelPanel.setHotel(newHotel);
 
-            // 🔥 simulator resetten
-            simulator = new Simulator(hotelPanel);
-            simulator.start();
+            // Voeg test gasten toe aan het nieuwe hotel
+            addTestGuests(newHotel);
 
-            statusLabel.setText("Hotel geladen: " + selectedLayout);
+            // 🔥 simulator resetten op paused state
+            simulator = new Simulator(newHotel, hotelPanel);
+            simulator.pause();
+
+            statusLabel.setText("Hotel geladen: " + selectedLayout + " (Klik 'Start' om de simulatie te beginnen)");
 
         } catch (Exception e) {
             statusLabel.setText("Fout: " + e.getMessage());
         }
+    }
+
+    private static void addTestGuests(Hotel hotel) {
+        // Voeg enkele test gasten toe
+        model.Gast gast1 = new model.Gast("Alice", 2, 2);
+        gast1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        hotel.addPersoon(gast1);
+
+        model.Gast gast2 = new model.Gast("Bob", 3, 3);
+        gast2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        hotel.addPersoon(gast2);
+
+        model.Gast gast3 = new model.Gast("Charlie", 1, 1);
+        gast3.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        hotel.addPersoon(gast3);
     }
 }

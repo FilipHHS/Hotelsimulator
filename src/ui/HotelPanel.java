@@ -2,6 +2,8 @@ package ui;
 
 import model.Area;
 import model.Hotel;
+import model.Gast;
+import model.Persoon;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
@@ -94,6 +96,32 @@ public class HotelPanel extends JPanel {
             g.drawString(label, textX, textY);
         }
 
+        // 🔥 NIEUW: Teken alle personen
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof Gast) {
+                Gast gast = (Gast) persoon;
+                int px = gast.getX() * VAKJE_GROOTTE + VAKJE_GROOTTE / 2 - 8;
+                int py = gast.getY() * VAKJE_GROOTTE + VAKJE_GROOTTE / 2 - 8;
+
+                // Teken met gast's eigen kleur
+                g.setColor(gast.getKleur());
+                g.fillOval(px, py, 16, 16);
+
+                // Teken rand (donkerder versie van dezelfde kleur)
+                g.setColor(new Color(
+                    Math.max(0, gast.getKleur().getRed() - 80),
+                    Math.max(0, gast.getKleur().getGreen() - 80),
+                    Math.max(0, gast.getKleur().getBlue() - 80)
+                ));
+                g.drawOval(px, py, 16, 16);
+
+                // Teken naam als tooltip (optioneel, heel klein)
+                g.setColor(Color.BLACK);
+                g.setFont(new Font("Arial", Font.PLAIN, 8));
+                g.drawString(gast.getNaam().substring(0, Math.min(3, gast.getNaam().length())), px + 2, py + 8);
+            }
+        }
+
         // 🔥 NIEUW: toon status (pause/active)
         if (!running) {
             g.setColor(new Color(0, 0, 0, 150));
@@ -106,6 +134,7 @@ public class HotelPanel extends JPanel {
     }
 
     private String getLabel(Area area) {
+        // ...existing code...
         switch (area.getAreaType()) {
             case "Room":
                 return area.getClassification() != null ?

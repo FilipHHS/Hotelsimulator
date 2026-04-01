@@ -6,8 +6,10 @@ public class Simulator {
 
     private boolean running;
     private HotelPanel hotelPanel;
+    private Hotel hotel;
 
-    public Simulator(HotelPanel hotelPanel) {
+    public Simulator(Hotel hotel, HotelPanel hotelPanel) {
+        this.hotel = hotel;
         this.hotelPanel = hotelPanel;
         this.running = false;
     }
@@ -28,6 +30,13 @@ public class Simulator {
 
     public void tick() {
         if (!running) return;
+
+        // Update all personen (guests move according to their logic)
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof Gast) {
+                ((Gast) persoon).update();
+            }
+        }
 
         // 🔥 BELANGRIJK: dit triggert jouw paintComponent()
         hotelPanel.repaint();
