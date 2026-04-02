@@ -29,12 +29,28 @@ public class Simulator {
     }
 
     public void tick() {
+<<<<<<< HEAD
         if (running) {
             // UPDATE FASE - Alleen als simulatie loopt
             for (Persoon persoon : hotel.getPersonen()) {
                 if (persoon instanceof Gast) {
                     ((Gast) persoon).update();
                 }
+=======
+        if (!running) return;
+
+        /// new
+        int testX = 0;
+        testX++;
+        System.out.println("Persoon beweegt naar: " + testX);
+
+        hotelPanel.repaint();
+
+        // Update all personen (guests move according to their logic)
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof Gast) {
+                ((Gast) persoon).update();
+>>>>>>> 8412da97cd77cb7bffadff3473854c797a572c1b
             }
         }
         
