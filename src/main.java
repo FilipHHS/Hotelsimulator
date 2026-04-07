@@ -13,6 +13,7 @@ public class main {
     private static HotelPanel hotelPanel;
     private static JComboBox<String> layoutDropdown;
     private static JLabel statusLabel;
+    private static JLabel timestepLabel;
     private static Simulator simulator;
 
     public static void main(String[] args) {
@@ -56,6 +57,10 @@ public class main {
                 statusLabel = new JLabel("Hotel laden...");
                 controlPanel.add(statusLabel);
 
+                // timestep label (toont klok)
+                timestepLabel = new JLabel("Timestep: 0");
+                controlPanel.add(timestepLabel);
+
                 // eerste layout laden
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
                 hotelPanel = new HotelPanel(hotel);
@@ -77,7 +82,11 @@ public class main {
                 frame.setVisible(true);
 
                 // 🔥 HTE ticks
-                new Timer(500, e -> simulator.tick()).start();
+                new Timer(500, e -> {
+                    simulator.tick();
+                    // Update timestep display
+                    timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
+                }).start();
 
             } catch (Exception e) {
                 System.out.println("Fout: " + e.getMessage());
@@ -110,6 +119,7 @@ public class main {
 
             // 🔥 simulator resetten op paused state
             simulator = new Simulator(newHotel, hotelPanel);
+            simulator.resetClock();
             simulator.pause();
 
             statusLabel.setText("Hotel geladen: " + selectedLayout + " (Klik 'Start' om de simulatie te beginnen)");
