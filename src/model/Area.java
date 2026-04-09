@@ -4,6 +4,8 @@ package model;
  * De Area klasse representeert een specifieke ruimte in het hotel.
  * Deze klasse bevat de data die direct uit de layout-configuratie komt
  * en biedt handige methodes om deze data om te zetten naar bruikbare coördinaten.
+ *
+ *
  */
 public class Area {
     // Ruwe datavelden (meestal ingevuld door een JSON-parser zoals Jackson of Gson)

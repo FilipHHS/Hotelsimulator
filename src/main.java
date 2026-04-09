@@ -14,6 +14,8 @@ public class main {
     private static JComboBox<String> layoutDropdown;
     private static JLabel statusLabel;
     private static Simulator simulator;
+    // --- US2.3: Variabele voor de timer toevoegen ---
+    private static Timer simulationTimer;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -24,22 +26,17 @@ public class main {
                 JPanel controlPanel = new JPanel();
                 controlPanel.add(new JLabel("Selecteer layout: "));
 
-                // layouts ophalen
                 String[] layouts = getAvailableLayouts();
-
                 layoutDropdown = new JComboBox<>(layouts);
                 controlPanel.add(layoutDropdown);
 
-                // load knop
                 JButton loadButton = new JButton("Laden");
                 loadButton.addActionListener(e -> loadLayout());
                 controlPanel.add(loadButton);
 
-                // pause knop (declare first, configure later)
                 JButton pauseButton = new JButton("Pause");
                 pauseButton.setEnabled(false);
 
-                // Start knop
                 JButton startButton = new JButton("Start");
                 startButton.addActionListener(e -> {
                     if (!simulator.isRunning()) {
@@ -51,7 +48,6 @@ public class main {
                 });
                 controlPanel.add(startButton);
 
-                // Configure pause button
                 pauseButton.addActionListener(e -> {
                     if (simulator.isRunning()) {
                         simulator.pause();
@@ -67,22 +63,39 @@ public class main {
                 });
                 controlPanel.add(pauseButton);
 
-                // status label
+                // --- US2.3: Slider toevoegen aan de GUI ---
+                // We kiezen een range van 50ms (supersnel) tot 1000ms (traag).
+                // De startwaarde is 500ms.
+                JLabel speedLabel = new JLabel("Delay: 500ms");
+                JSlider speedSlider = new JSlider(50, 1000, 500);
+
+                speedSlider.addChangeListener(e -> {
+                    int delay = speedSlider.getValue();
+                    // Pas de snelheid van de tikkende timer aan
+                    if (simulationTimer != null) {
+                        simulationTimer.setDelay(delay);
+                    }
+                    // Geef de waarde ook door aan de simulator (voor interne logica)
+                    if (simulator != null) {
+                        simulator.setSpeed(delay);
+                    }
+                    speedLabel.setText("Delay: " + delay + "ms");
+                });
+
+                controlPanel.add(speedLabel);
+                controlPanel.add(speedSlider);
+
                 statusLabel = new JLabel("Hotel laden...");
                 controlPanel.add(statusLabel);
 
-                // eerste layout laden
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
                 hotelPanel = new HotelPanel(hotel);
-
-                // Voeg test gasten toe
                 addTestGuests(hotel);
 
-                // 🔥 simulator hier maken (BELANGRIJK)
                 simulator = new Simulator(hotel, hotelPanel);
-                simulator.pause(); // Start in paused state
+                simulator.pause();
 
-                statusLabel.setText("Hotel geladen: " + layouts[0] + " (Klik 'Start' om de simulatie te beginnen)");
+                statusLabel.setText("Hotel geladen: " + layouts[0]);
 
                 frame.add(controlPanel, "North");
                 frame.add(hotelPanel, "Center");
@@ -91,8 +104,10 @@ public class main {
                 frame.setLocationRelativeTo(null);
                 frame.setVisible(true);
 
-                // 🔥 HTE ticks
-                new Timer(500, e -> simulator.tick()).start();
+                // --- US2.3: De timer opslaan in de variabele ---
+                // In plaats van 'new Timer().start()' slaan we hem nu op zodat 'setDelay' werkt
+                simulationTimer = new Timer(500, e -> simulator.tick());
+                simulationTimer.start();
 
             } catch (Exception e) {
                 System.out.println("Fout: " + e.getMessage());
@@ -104,11 +119,9 @@ public class main {
     private static String[] getAvailableLayouts() {
         File layoutDir = new File("layouts");
         String[] layouts = layoutDir.list((dir, name) -> name.endsWith(".json"));
-
         if (layouts == null || layouts.length == 0) {
             throw new RuntimeException("Geen layout bestanden gevonden");
         }
-
         Arrays.sort(layouts);
         return layouts;
     }
@@ -116,26 +129,20 @@ public class main {
     private static void loadLayout() {
         try {
             String selectedLayout = (String) layoutDropdown.getSelectedItem();
-
             Hotel newHotel = LayoutLoader.laadLayout("layouts/" + selectedLayout);
             hotelPanel.setHotel(newHotel);
-
-            // Voeg test gasten toe aan het nieuwe hotel
             addTestGuests(newHotel);
 
-            // 🔥 simulator resetten op paused state
             simulator = new Simulator(newHotel, hotelPanel);
             simulator.pause();
 
-            statusLabel.setText("Hotel geladen: " + selectedLayout + " (Klik 'Start' om de simulatie te beginnen)");
-
+            statusLabel.setText("Hotel geladen: " + selectedLayout);
         } catch (Exception e) {
             statusLabel.setText("Fout: " + e.getMessage());
         }
     }
 
     private static void addTestGuests(Hotel hotel) {
-        // Voeg enkele test gasten toe
         model.Gast gast1 = new model.Gast("Alice", 2, 2);
         gast1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         hotel.addPersoon(gast1);
