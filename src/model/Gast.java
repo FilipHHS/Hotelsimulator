@@ -18,6 +18,7 @@ public class Gast extends Persoon {
     /**
      * Constructor: startpositie meegeven
      * @param naam naam van de gast
+     *
      * @param startX startpositie X
      * @param startY startpositie Y
      */
