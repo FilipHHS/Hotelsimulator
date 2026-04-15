@@ -3,6 +3,8 @@ import model.LayoutLoader;
 import ui.HotelPanel;
 import model.Simulator;
 import model.Gast;
+import model.SimulationClock;
+import model.HTEClock;
 
 import javax.swing.*;
 import java.io.File;
@@ -70,25 +72,25 @@ public class main {
 
                 // --- US2.3: DE SNELHEID SLIDER ---
                 // We maken een label om de huidige snelheid in tekst te tonen (ms).
-                JLabel speedLabel = new JLabel("Delay: 500ms");
+                JLabel speedLabel = new JLabel("Tick Interval: 100ms");
 
                 /**
                  * JSlider(min, max, startwaarde).
-                 * We gebruiken 50ms als snelste (1000ms / 50 = 20 ticks per sec).
+                 * We gebruiken 50ms als snelste (meer ticks per seconde).
                  * We gebruiken 1000ms als langzaamste (1 tick per sec).
                  */
-                JSlider speedSlider = new JSlider(50, 1000, 500);
+                JSlider speedSlider = new JSlider(50, 1000, 100);
 
                 // ChangeListener: wordt uitgevoerd zodra je het schuifje beweegt.
                 speedSlider.addChangeListener(e -> {
-                    int delay = speedSlider.getValue(); // Haal de nieuwe waarde uit de slider
+                    int newInterval = speedSlider.getValue(); // Haal de nieuwe waarde uit de slider
 
-                    if (simulationTimer != null) {
-                        // Cruciaal: We vertellen de Timer dat hij minder lang moet wachten tussen ticks.
-                        simulationTimer.setDelay(delay);
+                    if (simulator != null) {
+                        // Pas de tick-interval aan in de SimulationClock
+                        simulator.getClock().setTickInterval(newInterval);
                     }
                     // Werk de tekst op het scherm bij.
-                    speedLabel.setText("Delay: " + delay + "ms");
+                    speedLabel.setText("Tick Interval: " + newInterval + "ms");
                 });
 
                 controlPanel.add(speedLabel);
@@ -119,17 +121,16 @@ public class main {
                 frame.setVisible(true); // Toon het venster
 
                 /**
-                 * DE KLOK (Timer):
-                 * Dit is de motor van het programma. De timer 'vuurt' elke X milliseconden.
+                 * DE KLOK (Timer) - HTE TICK ARCHITECTUUR:
+                 * De timer 'vuurt' elke 50ms (UI refresh rate).
+                 * De simulator bepaalt zelf via SimulationClock wanneer een echte HTE-tick moet plaatsvinden.
                  */
-                simulationTimer = new Timer(500, e -> {
-                    // Alleen als de gebruiker op Start heeft geklikt (isRunning == true)
-                    if (simulator.isRunning()) {
-                        simulator.tick(); // De simulator berekent de nieuwe posities van gasten
-
-                        // We halen de huidige tijdstap op uit de Simulator-klok en tonen dit in de UI.
-                        timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
-                    }
+                simulationTimer = new Timer(50, e -> {
+                    // Roep simulator.tick() aan - dit bepaalt intern of een HTE-tick nodig is
+                    simulator.tick();
+                    
+                    // Update UI met huidige timestep (alleen weergeven)
+                    timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
                 });
                 simulationTimer.start(); // De timer begint met 'lopen' op de achtergrond.
 

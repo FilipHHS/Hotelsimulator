@@ -31,6 +31,7 @@ public class Gast extends Persoon {
     }
     @Override
     public void onTick() {
+        System.out.println("[Gast] " + getNaam() + " beweegt naar (" + destX + ", " + destY + ") - nu op (" + x + ", " + y + ")");
         beweegStap();
     }
     private void beweegStap() {

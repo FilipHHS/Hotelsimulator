@@ -46,4 +46,12 @@ public class SimulationClock {
         timestep = 0;
         lastTickTime = System.currentTimeMillis();
     }
+
+    public void setTickInterval(long ms) {
+        this.tickInterval = ms;
+    }
+
+    public long getTickInterval() {
+        return tickInterval;
+    }
 }

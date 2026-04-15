@@ -1,3 +1,5 @@
+package model;
+
 import model.TickListener;
 
 import java.util.ArrayList;
@@ -27,12 +29,13 @@ public class HTEClock {
         tickCount++;
 
         // Debug output (handig tijdens testen)
-        System.out.println("Tick: " + tickCount);
+        System.out.println("====== HTEClock TICK #" + tickCount + " ======");
 
         // BELANGRIJK:
         // Alle entiteiten reageren hier tegelijk op dezelfde tick
         for (TickListener listener : listeners) {
             listener.onTick();
         }
+        System.out.println("====== Einde TICK #" + tickCount + " ======\n");
     }
 }
