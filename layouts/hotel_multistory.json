@@ -5,9 +5,14 @@
     "Dimension": "7, 1"
   },
   {
-    "AreaType": "Lift",
+    "AreaType": "Schacht",
     "Position": "1, 1",
     "Dimension": "1, 8"
+  },
+  {
+    "AreaType": "Lift",
+    "Position": "1, 1",
+    "Dimension": "1, 1"
   },
   {
     "AreaType": "Staircase",

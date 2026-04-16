@@ -112,6 +112,11 @@ public class main {
                 // Maak de simulator-engine aan.
                 simulator = new Simulator(hotel, hotelPanel);
                 simulator.pause(); // De simulatie staat stil tot de gebruiker op Start klikt.
+                
+                // === LINK LIFT AAN PANEL VOOR VISUALISATIE ===
+                if (simulator.getLift() != null) {
+                    hotelPanel.setLift(simulator.getLift());
+                }
 
                 // Voeg de onderdelen toe aan het hoofdvenster.
                 frame.add(controlPanel, "North"); // Knoppen boven
@@ -179,6 +184,11 @@ public class main {
             simulator = new Simulator(newHotel, hotelPanel);
             simulator.resetClock(); // Belangrijk: De klok moet weer op 0 beginnen.
             simulator.pause(); // Het nieuwe hotel begint altijd gepauzeerd.
+            
+            // === LINK LIFT AAN PANEL ===
+            if (simulator.getLift() != null) {
+                hotelPanel.setLift(simulator.getLift());
+            }
 
             // Reset de Start-knop tekst
             if (startPauseButton != null) {

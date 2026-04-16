@@ -4,6 +4,7 @@ import model.Area;
 import model.Hotel;
 import model.Gast;
 import model.Persoon;
+import model.Lift;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 public class HotelPanel extends JPanel {
 
     private Hotel hotel;
+    private Lift lift;  // Referentie naar de lift om deze te tekenen
 
     private final int VAKJE_GROOTTE = 50;
 
@@ -29,6 +31,10 @@ public class HotelPanel extends JPanel {
         this.hotel = hotel;
         updateDimensions();
         repaint();
+    }
+    
+    public void setLift(Lift lift) {
+        this.lift = lift;
     }
 
     // Simulator kan dit gebruiken
@@ -64,6 +70,10 @@ public class HotelPanel extends JPanel {
         // Areas tekenen
         List<Area> areas = hotel.getAreas();
         for (Area area : areas) {
+            // SKIP: De 1x1 Lift area - deze wordt dynamisch getekend!
+            if (area.getAreaType().equals("Lift")) {
+                continue;  // Teken NIET op vaste positie
+            }
 
             int x = (area.getX() - 1) * VAKJE_GROOTTE + offsetX;
             int y = (area.getY() - 1) * VAKJE_GROOTTE + offsetY;
@@ -92,6 +102,32 @@ public class HotelPanel extends JPanel {
             int textY = y + (hoogte + fm.getAscent()) / 2 - 2;
 
             g.drawString(label, textX, textY);
+        }
+
+        // === TEKEN LIFT (BEWEGEND OBJECT) ===
+        // Dit vervangt de statische 1x1 Lift area uit Areas!
+        if (lift != null) {
+            // Teken lift als 1x1 vakje
+            int liftX = (int)(lift.getX() * VAKJE_GROOTTE) + offsetX - VAKJE_GROOTTE/2;
+            int liftY = (int)(lift.getY() * VAKJE_GROOTTE) + offsetY - VAKJE_GROOTTE/2;
+            
+            // Teken lift als oranje vierkant (VAKJE_GROOTTE groot)
+            g.setColor(new Color(200, 100, 0));  // Oranje
+            g.fillRect(liftX, liftY, VAKJE_GROOTTE, VAKJE_GROOTTE);
+            
+            // Rand
+            g.setColor(Color.BLACK);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setStroke(new BasicStroke(2));
+            g.drawRect(liftX, liftY, VAKJE_GROOTTE, VAKJE_GROOTTE);
+            
+            // Teken "L" erin (groot)
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 30));
+            FontMetrics fm = g.getFontMetrics();
+            int lx = liftX + (VAKJE_GROOTTE - fm.stringWidth("L")) / 2;
+            int ly = liftY + (VAKJE_GROOTTE + fm.getAscent()) / 2 - 5;
+            g.drawString("L", lx, ly);
         }
 
         // Teken alle personen
@@ -142,6 +178,7 @@ public class HotelPanel extends JPanel {
             case "Restaurant": return "Restaurant";
             case "Fitness": return "Fitness";
             case "Lobby": return "Lobby";
+            case "Schacht": return "Schacht";
             case "Lift": return "Lift";
             case "Staircase": return "Trap";
             case "Storage": return "Opslag";
@@ -164,6 +201,7 @@ public class HotelPanel extends JPanel {
                 return new Color(200, 230, 255);
 
             case "Lobby": return new Color(255, 220, 50);
+            case "Schacht": return new Color(220, 220, 220);  // Grijze schacht
             case "Lift": return new Color(255, 150, 0);
             case "Staircase": return new Color(100, 200, 100);
             case "Restaurant": return new Color(255, 100, 100);
