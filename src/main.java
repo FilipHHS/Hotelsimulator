@@ -3,6 +3,7 @@ import model.LayoutLoader;
 import ui.HotelPanel;
 import model.Simulator;
 import model.Gast;
+import model.Kamer;
 import model.SimulationClock;
 import model.HTEClock;
 
@@ -106,6 +107,13 @@ public class main {
                 // --- EERSTE SETUP ---
                 // We laden direct het eerste hotel uit de lijst zodat het scherm niet leeg is.
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
+                
+                // === KAMERS AANMAKEN ===
+                hotel.addKamer(new Kamer(101, "Luxe"));
+                hotel.addKamer(new Kamer(102, "Luxe"));
+                hotel.addKamer(new Kamer(201, "Standaard"));
+                hotel.addKamer(new Kamer(202, "Standaard"));
+                
                 hotelPanel = new HotelPanel(hotel); // Maak het teken-veld aan
                 addTestGuests(hotel); // Zet Alice, Bob en Charlie in het hotel
 
@@ -211,17 +219,20 @@ public class main {
         Gast gast1 = new Gast("Alice", 2, 2);
         gast1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast1.setHotel(hotel);  // Geef gast de hotel areas
+        gast1.checkinKamer(hotel.zoekVrijeKamer("Luxe"));  // Alice incheckt in Luxe kamer
         hotel.addPersoon(gast1);
 
         // Doe hetzelfde voor Bob en Charlie
         Gast gast2 = new Gast("Bob", 3, 3);
         gast2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast2.setHotel(hotel);
+        gast2.checkinKamer(hotel.zoekVrijeKamer("Luxe"));  // Bob incheckt in Luxe kamer
         hotel.addPersoon(gast2);
 
         Gast gast3 = new Gast("Charlie", 1, 1);
         gast3.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast3.setHotel(hotel);
+        gast3.checkinKamer(hotel.zoekVrijeKamer("Standaard"));  // Charlie incheckt in Standaard kamer
         hotel.addPersoon(gast3);
     }
 }

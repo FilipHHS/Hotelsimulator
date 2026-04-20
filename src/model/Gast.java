@@ -24,7 +24,7 @@ public class Gast extends Persoon {
     private Lift lift;             // Referentie naar de lift
     private boolean inLift = false; // Zit gast in lift?
     private boolean usesTrap = false; // Gebruikt deze gast de trap?
-    
+    private Kamer huidigKamer; // Huidige kamer van gast (optioneel, kan gebruikt worden voor check-in/out)
     // === VISUAAL ===
     private Color kleur;
     
@@ -259,6 +259,35 @@ public class Gast extends Persoon {
     public double getY() { return y; }
     public Color getKleur() { return kleur; }
     public boolean isInLift() { return inLift; }
+    
+
+    // === INCHECKEN IN KAMER ===
+    public boolean checkinKamer(Kamer kamer) {
+        if (kamer == null || kamer.getStatus() != Kamer.KamerStatus.VRIJ) {
+            System.out.println("[Gast] " + getNaam() + " kon niet inchecken!");
+            return false;  // Kamer niet beschikbaar
+        }
+
+        this.huidigKamer = kamer;
+        kamer.setStatus(Kamer.KamerStatus.BEZET);
+        System.out.println("[Gast] " + getNaam() + " incheckt in kamer " + kamer.getKamernummer());
+        return true;
+    }
+
+    // === UITCHECKEN UIT KAMER ===
+    public void checkoutKamer() {
+        if (huidigKamer != null) {
+            huidigKamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
+            System.out.println("[Gast] " + getNaam() + " checkt uit van kamer " + huidigKamer.getKamernummer());
+            this.huidigKamer = null;
+        }
+    }
+
+    // === GETTER VOOR HUIDIGE KAMER ===
+    public Kamer getHuidigKamer() {
+        return huidigKamer;
+    }
+        
 }
 
 
