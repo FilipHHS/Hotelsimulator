@@ -240,6 +240,7 @@ public class Gast extends Persoon {
     /**
      * Gast gaat naar een specifieke faciliteit.
      * Zoekt automatisch de faciliteit-coördinaten uit het hotel.
+     * BELANGRIJK: Gast kan alleen naar faciliteiten op dezelfde verdieping (Y) gaan!
      */
     public void gaatNaarFaciliteit(String faciliteitsType) {
         if (hotel == null) {
@@ -258,6 +259,16 @@ public class Gast extends Persoon {
         
         if (faciliteitsArea == null) {
             System.out.println("[Gast] " + getNaam() + " kan faciliteit " + faciliteitsType + " niet vinden!");
+            return;
+        }
+        
+        // CHECK: Faciliteit moet op dezelfde verdieping zijn als gast!
+        int faciliteitsY = faciliteitsArea.getY();
+        int gastY = (int) this.y;
+        
+        if (faciliteitsY != gastY) {
+            System.out.println("[Gast] " + getNaam() + " kan niet naar " + faciliteitsType 
+                + " - anders verdieping! (Gast op Y=" + gastY + ", Faciliteit op Y=" + faciliteitsY + ")");
             return;
         }
         

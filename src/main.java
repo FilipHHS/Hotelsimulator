@@ -147,7 +147,7 @@ public class main {
                     
                     // TEST: Na 5 seconden: stuur Alice naar Restaurant
                     int timestep = simulator.getClock().getTimestep();
-                    if (timestep == 50) {
+                     if (timestep == 50) {
                         simulator.gastNaarFaciliteit("Alice", "Restaurant");
                     }
                     // Na 15 seconden: stuur Bob naar Fitness
@@ -233,24 +233,23 @@ public class main {
      * drie Gast-objecten toe aan de lijst met personen in het Hotel.
      */
     private static void addTestGuests(Hotel hotel) {
-        // Maak Alice aan op positie (2,2)
-        Gast gast1 = new Gast("Alice", 2, 2);
+        // Maak Alice aan op positie (2,6) - Restaurant verdieping
+        Gast gast1 = new Gast("Alice", 2, 6);
         gast1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast1.setHotel(hotel);  // Geef gast de hotel areas
-        gast1.checkinKamer(hotel.zoekVrijeKamer("Luxe"));  // Alice incheckt in Luxe kamer
+        // OPMERKING: Alice incheckt niet in kamer, want ze is op verdieping 6 (Restaurant)
         hotel.addPersoon(gast1);
 
-        // Doe hetzelfde voor Bob en Charlie
-        Gast gast2 = new Gast("Bob", 3, 3);
+        // Doe hetzelfde voor Bob op (3,6) 
+        Gast gast2 = new Gast("Bob", 3, 6);
         gast2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast2.setHotel(hotel);
-        gast2.checkinKamer(hotel.zoekVrijeKamer("Luxe"));  // Bob incheckt in Luxe kamer
         hotel.addPersoon(gast2);
 
-        Gast gast3 = new Gast("Charlie", 1, 1);
+        // Charlie op (1,7) - Lounge verdieping
+        Gast gast3 = new Gast("Charlie", 1, 7);
         gast3.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast3.setHotel(hotel);
-        gast3.checkinKamer(hotel.zoekVrijeKamer("Standaard"));  // Charlie incheckt in Standaard kamer
         hotel.addPersoon(gast3);
     }
 
