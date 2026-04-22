@@ -10,6 +10,11 @@
     "Dimension": "1, 1"
   },
   {
+    "AreaType": "Staircase",
+    "Position": "2, 1",
+    "Dimension": "1, 9"
+  },
+  {
     "AreaType": "Storage",
     "Position": "9, 1",
     "Dimension": "1, 2"

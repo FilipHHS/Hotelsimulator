@@ -33,8 +33,15 @@ public class Gast extends Persoon {
         NAAR_LIFT_WACHTEN,
         WACHTEN_OP_VERVOER,
         IN_LIFT,
+        GAAT_NAAR_FACILITEIT,
+        IN_FACILITEIT,
     }
     private State state = State.WANDELEN;
+    
+    // === FACILITEITEN ===
+    private String huidigerFaciliteitType = null;  // Restaurant, Fitness, Lounge, etc.
+    private double faciliteitX, faciliteitY;       // Doel-coördinaten van faciliteit
+    private int faciliteitsBezoekDuur = 0;         // Hoe lang gast in faciliteit blijft
     
     // === RANDOM WALK ===
     private int stapsInRichting = 0;
@@ -60,6 +67,12 @@ public class Gast extends Persoon {
                     break;
                 case WACHTEN_OP_VERVOER:
                     wachtOpVervoer();
+                    break;
+                case GAAT_NAAR_FACILITEIT:
+                    beweegNaarFaciliteit();
+                    break;
+                case IN_FACILITEIT:
+                    zitInFaciliteit();
                     break;
             }
         } else {
@@ -220,6 +233,108 @@ public class Gast extends Persoon {
 
     public Kamer getHuidigKamer() {
         return huidigKamer;
+    }
+
+    // ===== FACILITEITEN SYSTEEM =====
+    
+    /**
+     * Gast gaat naar een specifieke faciliteit.
+     * Zoekt automatisch de faciliteit-coördinaten uit het hotel.
+     */
+    public void gaatNaarFaciliteit(String faciliteitsType) {
+        if (hotel == null) {
+            System.out.println("[Gast] " + getNaam() + " kan niet naar " + faciliteitsType + " - geen hotel!");
+            return;
+        }
+        
+        // Zoek de faciliteit in het hotel (Areas)
+        Area faciliteitsArea = null;
+        for (Area area : hotel.getAreas()) {
+            if (faciliteitsType.equalsIgnoreCase(area.getAreaType())) {
+                faciliteitsArea = area;
+                break;
+            }
+        }
+        
+        if (faciliteitsArea == null) {
+            System.out.println("[Gast] " + getNaam() + " kan faciliteit " + faciliteitsType + " niet vinden!");
+            return;
+        }
+        
+        // Zet doel-coördinaten (het midden van de faciliteit)
+        double newFaciliteitX = faciliteitsArea.getX() + faciliteitsArea.getBreedte() / 2.0;
+        double newFaciliteitY = faciliteitsArea.getY() + 0.5;
+        
+        // VEILIGHEID: Zorg dat doel binnen grid grenzen blijft
+        newFaciliteitX = Math.max(0.5, Math.min(newFaciliteitX, maxX - 0.5));
+        newFaciliteitY = Math.max(0.5, Math.min(newFaciliteitY, maxY - 0.5));
+        
+        this.faciliteitX = newFaciliteitX;
+        this.faciliteitY = newFaciliteitY;
+        this.huidigerFaciliteitType = faciliteitsType;
+        this.state = State.GAAT_NAAR_FACILITEIT;
+        this.destX = this.faciliteitX;
+        
+        System.out.println("[Gast] " + getNaam() + " loopt naar " + faciliteitsType 
+            + " op (" + String.format("%.1f", faciliteitX) + ", " + String.format("%.1f", faciliteitY) + ")");
+    }
+    
+    /**
+     * Beweeg naar de doel-coördinaten van de faciliteit (ZOWEL X als Y)
+     */
+    private void beweegNaarFaciliteit() {
+        double dx = faciliteitX - x;
+        double dy = faciliteitY - y;
+        
+        // Check if reached destination (beide X en Y)
+        if (Math.abs(dx) < SPEED * 2 && Math.abs(dy) < SPEED * 2) {
+            x = faciliteitX;
+            y = faciliteitY;
+            this.state = State.IN_FACILITEIT;
+            this.faciliteitsBezoekDuur = 10 + RANDOM.nextInt(20);  // 10-30 ticks blijven
+            System.out.println("[Gast] " + getNaam() + " is aangekomen bij " + huidigerFaciliteitType);
+            return;
+        }
+        
+        // Beweeg richting X
+        if (dx > 0) {
+            x += SPEED;
+        } else if (dx < 0) {
+            x -= SPEED;
+        }
+        
+        // Beweeg richting Y
+        if (dy > 0) {
+            y += SPEED;
+        } else if (dy < 0) {
+            y -= SPEED;
+        }
+        
+        // VEILIGHEID: Zorg dat gast binnen grenzen blijft
+        x = Math.max(0.5, Math.min(x, maxX - 0.5));
+        y = Math.max(0.5, Math.min(y, maxY - 0.5));
+    }
+    
+    /**
+     * Gast zit in faciliteit en geniet ervan
+     */
+    private void zitInFaciliteit() {
+        faciliteitsBezoekDuur--;
+        
+        if (faciliteitsBezoekDuur <= 0) {
+            System.out.println("[Gast] " + getNaam() + " verlaat " + huidigerFaciliteitType);
+            this.huidigerFaciliteitType = null;
+            this.state = State.WANDELEN;
+            this.destX = x;  // Blijf op huidige plek
+        }
+    }
+    
+    public String getHuidigerFaciliteitType() {
+        return huidigerFaciliteitType;
+    }
+    
+    public boolean isInFaciliteit() {
+        return state == State.IN_FACILITEIT;
     }
 }
 

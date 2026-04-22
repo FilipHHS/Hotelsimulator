@@ -124,24 +124,39 @@ public class Simulator {
         }
     }
 
-    /**
-     * HOOFDMETHODE: Wordt aangeroepen door Timer in main
-     * Dit triggert HTE-ticks als timing klopt
-     */
-    public void tick() {
+     /**
+      * HOOFDMETHODE: Wordt aangeroepen door Timer in main
+      * Dit triggert HTE-ticks als timing klopt
+      */
+     public void tick() {
 
-        // Check of er een echte HTE-tick plaatsvindt
-        if (running && clock.tick()) {
-            System.out.println("[Simulator] HTE-tick #" + clock.getTimestep() + " | Lift Y: " + (lift != null ? String.format("%.1f", lift.getY()) : "N/A"));
-            
-            // Roep HTEClock.tick() aan (die roept alle listeners.onTick() aan)
-            // Dit includes: Lift + Gasten
-            hteClock.tick();
-        }
+         // Check of er een echte HTE-tick plaatsvindt
+         if (running && clock.tick()) {
+             System.out.println("[Simulator] HTE-tick #" + clock.getTimestep() + " | Lift Y: " + (lift != null ? String.format("%.1f", lift.getY()) : "N/A"));
+             
+             // Roep HTEClock.tick() aan (die roept alle listeners.onTick() aan)
+             // Dit includes: Lift + Gasten
+             hteClock.tick();
+         }
 
-        // UI altijd updaten (ook bij pauze)
-        hotelPanel.repaint();
-    }
-}
+         // UI altijd updaten (ook bij pauze)
+         hotelPanel.repaint();
+     }
+     
+     /**
+      * Stuur een gast naar een faciliteit.
+      * Dit kan aangeroepen worden vanuit events of tests.
+      */
+     public void gastNaarFaciliteit(String gastNaam, String faciliteitsType) {
+         for (Persoon p : hotel.getPersonen()) {
+             if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
+                 ((Gast) p).gaatNaarFaciliteit(faciliteitsType);
+                 System.out.println("[Simulator] Gast '" + gastNaam + "' gestuurd naar " + faciliteitsType);
+                 return;
+             }
+         }
+         System.out.println("[Simulator] Gast '" + gastNaam + "' niet gevonden!");
+     }
+ }
 
 

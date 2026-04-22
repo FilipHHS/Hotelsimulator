@@ -144,6 +144,20 @@ public class main {
                     
                     // Update UI met huidige timestep (alleen weergeven)
                     timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
+                    
+                    // TEST: Na 5 seconden: stuur Alice naar Restaurant
+                    int timestep = simulator.getClock().getTimestep();
+                    if (timestep == 50) {
+                        simulator.gastNaarFaciliteit("Alice", "Restaurant");
+                    }
+                    // Na 15 seconden: stuur Bob naar Fitness
+                    if (timestep == 150) {
+                        simulator.gastNaarFaciliteit("Bob", "Fitness");
+                    }
+                    // Na 25 seconden: stuur Charlie naar Lounge
+                    if (timestep == 250) {
+                        simulator.gastNaarFaciliteit("Charlie", "Lounge");
+                    }
                 });
                 simulationTimer.start(); // De timer begint met 'lopen' op de achtergrond.
 
