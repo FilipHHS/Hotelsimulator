@@ -17,7 +17,7 @@ public class Lift implements TickListener {
     private int schachtMaxY;       // Bovenste verdieping van schacht
     
     // === PASSAGIERS ===
-    private List<Gast> passagiers; // Personen in de lift
+    private List<Persoon> passagiers;  // Personen in de lift (zowel Gast als Schoonmaker)
     private static final int MAX_CAPACITY = 3; // Max personen
     
     // === BEWEGING ===
@@ -60,12 +60,20 @@ public class Lift implements TickListener {
     }
 
     /**
-     * Gast stapt in de lift (alleen als lift op dezelfde verdieping is!)
+     * Persoon stapt in de lift (alleen als lift op dezelfde verdieping is!)
      */
-    public boolean voegGastToe(Gast gast) {
-        // Check: zit gast op dezelfde verdieping als lift?
-        if (Math.abs(gast.getY() - this.y) > 0.1) {
-            return false; // Nee, gast kan niet instappen
+    public boolean voegGastToe(Persoon persoon) {
+        // Check: zit persoon op dezelfde verdieping als lift?
+        if (persoon instanceof Gast) {
+            Gast gast = (Gast) persoon;
+            if (Math.abs(gast.getY() - this.y) > 0.1) {
+                return false; // Nee, persoon kan niet instappen
+            }
+        } else if (persoon instanceof Schoonmaker) {
+            Schoonmaker schoonmaker = (Schoonmaker) persoon;
+            if (Math.abs(schoonmaker.getY() - this.y) > 0.1) {
+                return false; // Nee, persoon kan niet instappen
+            }
         }
         
         // Check: is lift vol?
@@ -73,25 +81,25 @@ public class Lift implements TickListener {
             return false;
         }
         
-        // Voeg gast toe
-        passagiers.add(gast);
-        System.out.println("[Lift] " + gast.getNaam() + " stapt in op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
+        // Voeg persoon toe
+        passagiers.add(persoon);
+        System.out.println("[Lift] " + persoon.getNaam() + " stapt in op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
         return true;
     }
 
     /**
-     * Gast stapt uit de lift
+     * Persoon stapt uit de lift
      */
-    public void verwijderGast(Gast gast) {
-        if (passagiers.remove(gast)) {
-            System.out.println("[Lift] " + gast.getNaam() + " stapt uit op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
+    public void verwijderGast(Persoon persoon) {
+        if (passagiers.remove(persoon)) {
+            System.out.println("[Lift] " + persoon.getNaam() + " stapt uit op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
         }
     }
 
     /**
      * Geef alle passagiers terug
      */
-    public List<Gast> getPassagiers() {
+    public List<Persoon> getPassagiers() {
         return new ArrayList<>(passagiers);
     }
 
@@ -139,8 +147,10 @@ public class Lift implements TickListener {
         y = Math.max(schachtMinY + 0.5, Math.min(y, schachtMaxY + 0.5));
         
         // === FASE 3: PASSAGIERS MEENEMEN ===
-        for (Gast gast : passagiers) {
-            gast.setLiftPosition(this.x, this.y);
+        for (Persoon persoon : passagiers) {
+            if (persoon instanceof Gast) {
+                ((Gast) persoon).setLiftPosition(this.x, this.y);
+            }
         }
     }
 

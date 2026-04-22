@@ -70,6 +70,12 @@ public class Simulator {
                 ((Gast) p).setLift(lift);
                 System.out.println("[Simulator] Gast '" + p.getNaam() + "' heeft lift-referentie gekregen");
             }
+            
+            // Als het een Schoonmaker is: geef hem ook lift-referentie
+            if (p instanceof Schoonmaker && lift != null) {
+                ((Schoonmaker) p).setLift(lift);
+                System.out.println("[Simulator] Schoonmaker '" + p.getNaam() + "' heeft lift-referentie gekregen");
+            }
         }
     }
 

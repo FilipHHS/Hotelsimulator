@@ -1,246 +1,178 @@
 package model;
 import java.awt.Color;
 import java.util.Random;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * GAST - Hotelgast die rond loopt, in/uit lift stapt en verdiepingen verandert
+ * GAST - Hotelgast die random wandelt (links-rechts) op dezelfde verdieping
+ * Alleen via lift/trap kan gast naar andere verdiepingen
  */
 public class Gast extends Persoon {
     private static final Random RANDOM = new Random();
     private static final double SPEED = 0.5;
-    private static final double LIFT_WAIT_X = 1.5;  // Buiten schacht: wachten op lift
-    private static final double TRAP_X = 8.5;       // Trap X-positie (kolom 9, dus 8.5)
+    private static final double LIFT_WAIT_X = 1.5;
+    private static final double TRAP_X = 8.5;
     
     // === POSITIE ===
-    private double x, y;           // Huidige positie
-    private double destX, destY;   // Intermediate doel (bijv. naar lift toe)
-    private double finalDestX, finalDestY; // Echte doel (kamer/restaurant)
+    private double x, y;
+    private double destX;
     private int maxX, maxY;
     
     // === HOTEL & LIFT ===
     private Hotel hotel;
-    private Lift lift;             // Referentie naar de lift
-    private boolean inLift = false; // Zit gast in lift?
-    private boolean usesTrap = false; // Gebruikt deze gast de trap?
-    private Kamer huidigKamer; // Huidige kamer van gast (optioneel, kan gebruikt worden voor check-in/out)
+    private Lift lift;
+    private boolean inLift = false;
+    private boolean usesTrap = false;
+    private Kamer huidigKamer;
+    
     // === VISUAAL ===
     private Color kleur;
     
     // === TOESTANDEN ===
     private enum State {
-        WANDELEN,           // Loopt normaal rond
-        NAAR_LIFT_WACHTEN,  // Loopt naar lift wachtplek (X=1.5, zelfde Y)
-        WACHTEN_OP_LIFT,    // Staat stil en wacht tot lift aankomt
-        IN_LIFT,            // Zit in lift
-        NAAR_DOEL           // Na lift: loopt naar eindbestemming
+        WANDELEN,
+        NAAR_LIFT_WACHTEN,
+        WACHTEN_OP_VERVOER,
+        IN_LIFT,
     }
     private State state = State.WANDELEN;
+    
+    // === RANDOM WALK ===
+    private int stapsInRichting = 0;
+    private int maxStapsRichting = 5;
 
     public Gast(String naam, int startX, int startY) {
         super(naam, "Gast");
         this.x = startX + 0.5;
         this.y = startY + 0.5;
         this.destX = x;
-        this.destY = y;
-        this.finalDestX = x;
-        this.finalDestY = y;
         this.kleur = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
     }
 
     @Override
     public void onTick() {
-        // === NORMALE BEWEGING (niet in lift) ===
         if (!inLift) {
-            beweegStap();
+            switch (state) {
+                case WANDELEN:
+                    randomWalk();
+                    break;
+                case NAAR_LIFT_WACHTEN:
+                    beweegNaarLiftTrap();
+                    break;
+                case WACHTEN_OP_VERVOER:
+                    wachtOpVervoer();
+                    break;
+            }
         } else {
-            // === IN LIFT: VOLG LIFT-POSITIE ===
             if (lift != null) {
                 this.x = lift.getX();
                 this.y = lift.getY();
                 
-                // === CHECK OF GAST UIT MOET STAPPEN ===
                 int liftFloor = (int) lift.getY();
-                int destFloor = (int) finalDestY;
+                int targetFloor = (int) destX;
                 
-                // Lift op doel en stilstaand?
-                if (liftFloor == destFloor && lift.isIdle()) {
-                    // Stap uit!
+                if (liftFloor == targetFloor && lift.isIdle()) {
                     lift.verwijderGast(this);
                     this.inLift = false;
-                    this.state = State.NAAR_DOEL;
-                    this.destX = finalDestX;
-                    this.destY = finalDestY;
-                    System.out.println("[Gast] " + getNaam() + " stapt uit lift op verdieping " + (int)y);
-                }
-            }
-        }
-    }
-
-    /**
-     * Normale beweging als gast niet in lift zit
-     */
-    private void beweegStap() {
-        double dx = destX - x;
-        double dy = destY - y;
-        double distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Aangekomen op doel?
-        if (distance < SPEED) {
-            handleStateTransition();
-            return;
-        }
-        
-        // Zet stap in richting van doel
-        double dirX = dx / distance;
-        double dirY = dy / distance;
-        x += dirX * SPEED;
-        y += dirY * SPEED;
-        
-        // Zorg dat gast binnen hotel blijft
-        x = Math.max(0.5, Math.min(x, maxX - 0.5));
-        y = Math.max(0.5, Math.min(y, maxY - 0.5));
-    }
-
-    /**
-     * Verwerk toestandsovergangen
-     */
-    private void handleStateTransition() {
-        switch (state) {
-            case WANDELEN:
-                // === FASE 1: KIES NIEUW DOEL ===
-                kiesNieuwebestemming();
-                int currentFloor = (int) y;
-                int newFloor = (int) finalDestY;
-                
-                if (currentFloor != newFloor) {
-                    // === ANDER VERDIEPING: KIES LIFT OF TRAP ===
-                    // 50% kans trap, 50% kans lift
-                    this.usesTrap = RANDOM.nextBoolean();
-                    
-                    if (usesTrap) {
-                        // TRAP GEBRUIKEN
-                        this.destX = TRAP_X;
-                        this.destY = y;  // Zelfde verdieping, maar naar trap toe
-                        this.state = State.NAAR_LIFT_WACHTEN;
-                        System.out.println("[Gast] " + getNaam() + " loopt naar TRAP (verdieping " + currentFloor + " → " + newFloor + ")");
-                    } else {
-                        // LIFT GEBRUIKEN
-                        this.destX = LIFT_WAIT_X;
-                        this.destY = y;  // Zelfde verdieping, maar naar lift toe
-                        this.state = State.NAAR_LIFT_WACHTEN;
-                        System.out.println("[Gast] " + getNaam() + " loopt naar LIFT (verdieping " + currentFloor + " → " + newFloor + ")");
-                    }
-                } else {
-                    // ZELFDE VERDIEPING: direct naar doel
-                    this.destX = finalDestX;
-                    this.destY = finalDestY;
-                    this.state = State.NAAR_DOEL;
-                }
-                break;
-                
-            case NAAR_LIFT_WACHTEN:
-                // === FASE 2: GAST LOOPT NAAR LIFT/TRAP WACHTPLEK ===
-                double targetX = usesTrap ? TRAP_X : LIFT_WAIT_X;
-                
-                if (Math.abs(x - targetX) < 0.2) {
-                    this.x = targetX;  // Lock positie
-                    this.state = State.WACHTEN_OP_LIFT;
-                    System.out.println("[Gast] " + getNaam() + " wacht op " + (usesTrap ? "TRAP" : "LIFT") + " op verdieping " + (int)y);
-                }
-                break;
-                
-            case WACHTEN_OP_LIFT:
-                // === FASE 3: WACHTEN OP VERVOER ===
-                if (usesTrap) {
-                    // === TRAP: GAST GAAT ZELF OMHOOG/OMLAAG ===
-                    // Trap mag direct gebruikt worden
-                    this.destX = finalDestX;
-                    this.destY = finalDestY;
-                    this.state = State.NAAR_DOEL;
-                    System.out.println("[Gast] " + getNaam() + " stapt op TRAP en gaat naar verdieping " + (int)finalDestY);
-                } else {
-                    // === LIFT: WACHT TOT LIFT AANKOMT ===
-                    if (lift != null && Math.abs(lift.getY() - this.y) < 0.2 && lift.isIdle()) {
-                        // LIFT IS HIER! Stap in
-                        if (lift.voegGastToe(this)) {
-                            this.inLift = true;
-                            this.state = State.IN_LIFT;
-                            // Roep lift op naar doel
-                            lift.roepNaar((int) finalDestY);
-                            System.out.println("[Gast] " + getNaam() + " stapt in LIFT op verdieping " + (int)y);
-                        }
-                    }
-                }
-                break;
-                
-            case IN_LIFT:
-                // === FASE 4: IN LIFT - EXIT WORDT AFGEHANDELD IN onTick() ===
-                // Niets nodig, gast volgt lift en stapt uit in onTick()
-                break;
-                
-            case NAAR_DOEL:
-                // === FASE 5: LOOPT NAAR EINDBESTEMMING ===
-                // Check: zijn we aangekomen?
-                double dx = finalDestX - x;
-                double dy = finalDestY - y;
-                double distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < 0.5) {
-                    // AANGEKOMEN! Terug naar WANDELEN
                     this.state = State.WANDELEN;
-                    System.out.println("[Gast] " + getNaam() + " is aangekomen op bestemming " + (int)x + "," + (int)y);
+                    System.out.println("[Gast] " + getNaam() + " stapt uit lift op verdieping " + liftFloor);
                 }
-                break;
+            }
         }
     }
 
-    /**
-     * Kies willekeurig nieuw doel
-     */
-    private void kiesNieuwebestemming() {
-        if (hotel == null) {
-            this.finalDestX = RANDOM.nextInt(Math.max(1, maxX - 1)) + 0.5;
-            this.finalDestY = RANDOM.nextInt(Math.max(1, maxY - 1)) + 0.5;
+    private void randomWalk() {
+        if (stapsInRichting >= maxStapsRichting) {
+            int keuze = RANDOM.nextInt(10);
+            if (keuze < 4) {
+                destX = Math.max(2.0, x - 3);  // Minimum 2.0 (links van trap)
+            } else if (keuze < 8) {
+                destX = Math.min(maxX - 3.0, x + 3);  // Maximum maxX-3 (rechts van trap)
+            } else {
+                destX = x;
+            }
+            stapsInRichting = 0;
+            maxStapsRichting = RANDOM.nextInt(3) + 2;
+        }
+        
+        double dx = destX - x;
+        
+        if (Math.abs(dx) < SPEED) {
+            x = destX;
+            stapsInRichting = maxStapsRichting;
+        } else if (dx > 0) {
+            x += SPEED;
+        } else {
+            x -= SPEED;
+        }
+        
+        x = Math.max(0.5, Math.min(x, maxX - 0.5));
+        stapsInRichting++;
+        
+        if (RANDOM.nextDouble() < 0.03) {
+            wiltVerdiepingWisselen();
+        }
+    }
+
+    private void wiltVerdiepingWisselen() {
+        this.usesTrap = RANDOM.nextBoolean();
+        
+        if (usesTrap) {
+            this.destX = TRAP_X;
+        } else {
+            this.destX = LIFT_WAIT_X;
+        }
+        
+        this.state = State.NAAR_LIFT_WACHTEN;
+        System.out.println("[Gast] " + getNaam() + " loopt naar " + (usesTrap ? "TRAP" : "LIFT"));
+    }
+
+    private void beweegNaarLiftTrap() {
+        double dx = destX - x;
+        
+        if (Math.abs(dx) < SPEED * 2) {  // Groter tolerance zone
+            x = destX;
+            this.state = State.WACHTEN_OP_VERVOER;
+            System.out.println("[Gast] " + getNaam() + " wacht op " + (usesTrap ? "trap" : "lift") + " op X=" + String.format("%.1f", destX));
             return;
         }
         
-        List<Area> areas = hotel.getAreas();
-        if (areas.isEmpty()) return;
+        if (dx > 0) {
+            x += SPEED;
+        } else {
+            x -= SPEED;
+        }
         
-        // Filter: niet naar lift/trap/schacht
-        List<Area> validAreas = new ArrayList<>();
-        for (Area area : areas) {
-            String type = area.getAreaType();
-            if (!type.equals("Lift") && !type.equals("Staircase") && !type.equals("Schacht")) {
-                validAreas.add(area);
+        x = Math.max(0.5, Math.min(x, maxX - 0.5));
+    }
+
+    private void wachtOpVervoer() {
+        if (usesTrap) {
+            int currentFloor = (int) y;
+            int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
+            newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
+            
+            // Trap gebruiken - ga naar nieuw doel
+            this.y = newFloor + 0.5;
+            this.destX = x;  // Blijf op huidige X positie na trap
+            this.state = State.WANDELEN;
+            System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
+        } else {
+            if (lift != null && Math.abs(lift.getY() - this.y) < 0.2 && lift.isIdle()) {
+                int currentFloor = (int) y;
+                int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
+                newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
+                
+                if (lift.voegGastToe(this)) {
+                    this.inLift = true;
+                    this.destX = newFloor + 0.5;  // Opslaan als intermediaire waarde
+                    this.state = State.IN_LIFT;
+                    lift.roepNaar(newFloor);
+                    System.out.println("[Gast] " + getNaam() + " stapt in lift naar verdieping " + newFloor);
+                }
             }
         }
-        
-        if (validAreas.isEmpty()) return;
-        
-        // Kies willekeurig
-        Area target = validAreas.get(RANDOM.nextInt(validAreas.size()));
-        
-        int randomX = (target.getX() - 1) + RANDOM.nextInt(Math.max(1, target.getBreedte()));
-        int randomY = (target.getY() - 1) + RANDOM.nextInt(Math.max(1, target.getHoogte()));
-        
-        this.finalDestX = randomX + 0.5;
-        this.finalDestY = randomY + 0.5;
     }
 
-    /**
-     * BELANGRIJK: Lift zet gast positie wanneer in lift
-     */
-    public void setLiftPosition(double liftX, double liftY) {
-        if (inLift) {
-            this.x = liftX;
-            this.y = liftY;
-        }
-    }
-
-    // === SETTERS ===
     public void setGridBounds(int maxX, int maxY) {
         this.maxX = maxX;
         this.maxY = maxY;
@@ -254,18 +186,22 @@ public class Gast extends Persoon {
         this.lift = lift;
     }
 
-    // === GETTERS ===
+    public void setLiftPosition(double liftX, double liftY) {
+        if (inLift) {
+            this.x = liftX;
+            this.y = liftY;
+        }
+    }
+
     public double getX() { return x; }
     public double getY() { return y; }
     public Color getKleur() { return kleur; }
     public boolean isInLift() { return inLift; }
-    
 
-    // === INCHECKEN IN KAMER ===
     public boolean checkinKamer(Kamer kamer) {
         if (kamer == null || kamer.getStatus() != Kamer.KamerStatus.VRIJ) {
             System.out.println("[Gast] " + getNaam() + " kon niet inchecken!");
-            return false;  // Kamer niet beschikbaar
+            return false;
         }
 
         this.huidigKamer = kamer;
@@ -274,7 +210,6 @@ public class Gast extends Persoon {
         return true;
     }
 
-    // === UITCHECKEN UIT KAMER ===
     public void checkoutKamer() {
         if (huidigKamer != null) {
             huidigKamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
@@ -283,19 +218,8 @@ public class Gast extends Persoon {
         }
     }
 
-    // === GETTER VOOR HUIDIGE KAMER ===
     public Kamer getHuidigKamer() {
         return huidigKamer;
     }
-        
 }
-
-
-
-
-
-
-
-
-
 

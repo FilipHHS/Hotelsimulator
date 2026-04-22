@@ -6,6 +6,8 @@ import model.Gast;
 import model.Kamer;
 import model.SimulationClock;
 import model.HTEClock;
+import model.Schoonmaker;
+import model.Area;
 
 import javax.swing.*;
 import java.io.File;
@@ -109,13 +111,11 @@ public class main {
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
                 
                 // === KAMERS AANMAKEN ===
-                hotel.addKamer(new Kamer(101, "Luxe"));
-                hotel.addKamer(new Kamer(102, "Luxe"));
-                hotel.addKamer(new Kamer(201, "Standaard"));
-                hotel.addKamer(new Kamer(202, "Standaard"));
+                initializeKamers(hotel);
                 
                 hotelPanel = new HotelPanel(hotel); // Maak het teken-veld aan
                 addTestGuests(hotel); // Zet Alice, Bob en Charlie in het hotel
+                addSchoonmakers(hotel); // Voeg schoonmakers toe
 
                 // Maak de simulator-engine aan.
                 simulator = new Simulator(hotel, hotelPanel);
@@ -183,10 +183,14 @@ public class main {
             // Gebruik de LayoutLoader om de JSON te vertalen naar een Hotel-object
             Hotel newHotel = LayoutLoader.laadLayout("layouts/" + selectedLayout);
 
+            // === KAMERS AANMAKEN ===
+            initializeKamers(newHotel);
+
             // Geef het nieuwe hotel door aan het HotelPanel zodat de tekening verandert
             hotelPanel.setHotel(newHotel);
 
             addTestGuests(newHotel); // Zet de gasten weer terug op hun startpositie
+            addSchoonmakers(newHotel); // Voeg schoonmakers toe
 
             // Maak de simulator helemaal opnieuw aan voor het nieuwe hotel.
             simulator = new Simulator(newHotel, hotelPanel);
@@ -235,4 +239,54 @@ public class main {
         gast3.checkinKamer(hotel.zoekVrijeKamer("Standaard"));  // Charlie incheckt in Standaard kamer
         hotel.addPersoon(gast3);
     }
+
+    /**
+     * initializeKamers:
+     * Maakt kamers aan en koppelt ze aan de bijbehorende Area objecten
+     */
+    private static void initializeKamers(Hotel hotel) {
+        // Zoek alle Room areas in de layout
+        java.util.List<Area> roomAreas = new java.util.ArrayList<>();
+        for (Area area : hotel.getAreas()) {
+            if ("Room".equals(area.getAreaType())) {
+                roomAreas.add(area);
+            }
+        }
+        
+        // Maak kamers aan en koppel ze aan areas
+        // Voor nu: 4 kamers op vaste nummers
+        int[] kamerNummers = {101, 102, 201, 202};
+        String[] types = {"Luxe", "Luxe", "Standaard", "Standaard"};
+        
+        for (int i = 0; i < kamerNummers.length && i < roomAreas.size(); i++) {
+            Kamer kamer = new Kamer(kamerNummers[i], types[i]);
+            kamer.setArea(roomAreas.get(i));  // Koppel aan Area
+            
+            // TEST: meerdere kamers zijn vuil voor testing schoonmakers
+            // Maak eerste 3 kamers viez zodat schoonmakers kunnen spreiden
+            if (i < 3) {
+                kamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
+            }
+            
+            hotel.addKamer(kamer);
+        }
+    }
+
+    /**
+     * addSchoonmakers:
+     * Voegt schoonmakers toe aan de simulatie
+     */
+    private static void addSchoonmakers(Hotel hotel) {
+        // Maak 2 schoonmakers aan op willekeurige startposities
+        Schoonmaker schoonmaker1 = new Schoonmaker("Schoonmaker1", 3, 1);
+        schoonmaker1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        schoonmaker1.setHotel(hotel);
+        hotel.addPersoon(schoonmaker1);
+
+        Schoonmaker schoonmaker2 = new Schoonmaker("Schoonmaker2", 4, 1);
+        schoonmaker2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        schoonmaker2.setHotel(hotel);
+        hotel.addPersoon(schoonmaker2);
+    }
 }
+

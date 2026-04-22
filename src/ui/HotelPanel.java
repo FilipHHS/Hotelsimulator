@@ -5,6 +5,7 @@ import model.Hotel;
 import model.Gast;
 import model.Persoon;
 import model.Lift;
+import model.Schoonmaker;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
@@ -154,6 +155,24 @@ public class HotelPanel extends JPanel {
                 g.setColor(Color.BLACK);
                 g.setFont(new Font("Arial", Font.PLAIN, 8));
                 g.drawString(gast.getNaam().substring(0, Math.min(3, gast.getNaam().length())), px + 2, py + 8);
+            } else if (persoon instanceof Schoonmaker) {
+                Schoonmaker schoonmaker = (Schoonmaker) persoon;
+                // Teken schoonmaker op dezelfde manier als gast
+                int px = (int)(schoonmaker.getX() * VAKJE_GROOTTE) + offsetX - 8;
+                int py = (int)(schoonmaker.getY() * VAKJE_GROOTTE) + offsetY - 8;
+
+                // Teken met schoonmaker's kleur (grijs)
+                g.setColor(schoonmaker.getKleur());
+                g.fillRect(px, py, 16, 16);  // Vierkant i.p.v. cirkel
+
+                // Teken rand
+                g.setColor(Color.BLACK);
+                g.drawRect(px, py, 16, 16);
+
+                // Teken label
+                g.setColor(Color.BLACK);
+                g.setFont(new Font("Arial", Font.PLAIN, 8));
+                g.drawString("S", px + 5, py + 8);
             }
         }
 
