@@ -4,29 +4,29 @@ import java.util.Random;
 
 /**
  * GAST - Hotelgast die random wandelt (links-rechts) op dezelfde verdieping
- * Alleen via lift/trap kan gast naar andere verdiepingen
+ * US3.7: Houdt nu rekening met het positiegrid van het hotel om botsingen te voorkomen.
  */
 public class Gast extends Persoon {
     private static final Random RANDOM = new Random();
     private static final double SPEED = 0.5;
     private static final double LIFT_WAIT_X = 1.5;
     private static final double TRAP_X = 8.5;
-    
+
     // === POSITIE ===
     private double x, y;
     private double destX;
     private int maxX, maxY;
-    
+
     // === HOTEL & LIFT ===
     private Hotel hotel;
     private Lift lift;
     private boolean inLift = false;
     private boolean usesTrap = false;
     private Kamer huidigKamer;
-    
+
     // === VISUAAL ===
     private Color kleur;
-    
+
     // === TOESTANDEN ===
     private enum State {
         WANDELEN,
@@ -37,12 +37,12 @@ public class Gast extends Persoon {
         IN_FACILITEIT,
     }
     private State state = State.WANDELEN;
-    
+
     // === FACILITEITEN ===
-    private String huidigerFaciliteitType = null;  // Restaurant, Fitness, Lounge, etc.
-    private double faciliteitX, faciliteitY;       // Doel-coördinaten van faciliteit
-    private int faciliteitsBezoekDuur = 0;         // Hoe lang gast in faciliteit blijft
-    
+    private String huidigerFaciliteitType = null;
+    private double faciliteitX, faciliteitY;
+    private int faciliteitsBezoekDuur = 0;
+
     // === RANDOM WALK ===
     private int stapsInRichting = 0;
     private int maxStapsRichting = 5;
@@ -79,10 +79,10 @@ public class Gast extends Persoon {
             if (lift != null) {
                 this.x = lift.getX();
                 this.y = lift.getY();
-                
+
                 int liftFloor = (int) lift.getY();
                 int targetFloor = (int) destX;
-                
+
                 if (liftFloor == targetFloor && lift.isIdle()) {
                     lift.verwijderGast(this);
                     this.inLift = false;
@@ -93,68 +93,83 @@ public class Gast extends Persoon {
         }
     }
 
+    /**
+     * US3.7: Random walk die controleert of het grid-vakje vrij is.
+     */
     private void randomWalk() {
         if (stapsInRichting >= maxStapsRichting) {
             int keuze = RANDOM.nextInt(10);
             if (keuze < 4) {
-                destX = Math.max(2.0, x - 3);  // Minimum 2.0 (links van trap)
+                destX = Math.max(2.0, x - 3);
             } else if (keuze < 8) {
-                destX = Math.min(maxX - 3.0, x + 3);  // Maximum maxX-3 (rechts van trap)
+                destX = Math.min(maxX - 3.0, x + 3);
             } else {
                 destX = x;
             }
             stapsInRichting = 0;
             maxStapsRichting = RANDOM.nextInt(3) + 2;
         }
-        
+
         double dx = destX - x;
-        
+        double volgendeX = x;
+
         if (Math.abs(dx) < SPEED) {
-            x = destX;
-            stapsInRichting = maxStapsRichting;
+            volgendeX = destX;
         } else if (dx > 0) {
-            x += SPEED;
+            volgendeX = x + SPEED;
         } else {
-            x -= SPEED;
+            volgendeX = x - SPEED;
         }
-        
+
+        // --- US3.7 COLLISION CHECK ---
+        if (isVakjeBezet((int)volgendeX, (int)y)) {
+            // Vakje is bezet, we stoppen en proberen volgende tick opnieuw (of andere richting)
+            stapsInRichting = maxStapsRichting;
+            return;
+        }
+
+        x = volgendeX;
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
         stapsInRichting++;
-        
+
         if (RANDOM.nextDouble() < 0.03) {
             wiltVerdiepingWisselen();
         }
     }
 
+    /**
+     * Hulp-methode voor US3.7 om te checken of iemand anders op een vakje staat.
+     */
+    private boolean isVakjeBezet(int gx, int gy) {
+        if (hotel == null) return false;
+        Persoon ander = hotel.getPersoonOp(gx, gy);
+        // Bezet als er iemand staat die ik niet zelf ben
+        return (ander != null && ander != this);
+    }
+
     private void wiltVerdiepingWisselen() {
         this.usesTrap = RANDOM.nextBoolean();
-        
-        if (usesTrap) {
-            this.destX = TRAP_X;
-        } else {
-            this.destX = LIFT_WAIT_X;
-        }
-        
+        this.destX = usesTrap ? TRAP_X : LIFT_WAIT_X;
         this.state = State.NAAR_LIFT_WACHTEN;
-        System.out.println("[Gast] " + getNaam() + " loopt naar " + (usesTrap ? "TRAP" : "LIFT"));
     }
 
     private void beweegNaarLiftTrap() {
         double dx = destX - x;
-        
-        if (Math.abs(dx) < SPEED * 2) {  // Groter tolerance zone
+        double volgendeX = x;
+
+        if (Math.abs(dx) < SPEED * 2) {
             x = destX;
             this.state = State.WACHTEN_OP_VERVOER;
-            System.out.println("[Gast] " + getNaam() + " wacht op " + (usesTrap ? "trap" : "lift") + " op X=" + String.format("%.1f", destX));
             return;
         }
-        
-        if (dx > 0) {
-            x += SPEED;
-        } else {
-            x -= SPEED;
+
+        volgendeX = (dx > 0) ? x + SPEED : x - SPEED;
+
+        // US3.7 Collision check ook hier
+        if (!isVakjeBezet((int)volgendeX, (int)y)) {
+            x = volgendeX;
         }
-        
+
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
     }
 
@@ -163,24 +178,25 @@ public class Gast extends Persoon {
             int currentFloor = (int) y;
             int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
             newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
-            
-            // Trap gebruiken - ga naar nieuw doel
-            this.y = newFloor + 0.5;
-            this.destX = x;  // Blijf op huidige X positie na trap
-            this.state = State.WANDELEN;
-            System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
+
+            // Check of landingsplek trap vrij is
+            if (!isVakjeBezet((int)x, newFloor)) {
+                this.y = newFloor + 0.5;
+                this.destX = x;
+                this.state = State.WANDELEN;
+                System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
+            }
         } else {
             if (lift != null && Math.abs(lift.getY() - this.y) < 0.2 && lift.isIdle()) {
                 int currentFloor = (int) y;
                 int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
                 newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
-                
+
                 if (lift.voegGastToe(this)) {
                     this.inLift = true;
-                    this.destX = newFloor + 0.5;  // Opslaan als intermediaire waarde
+                    this.destX = newFloor + 0.5;
                     this.state = State.IN_LIFT;
                     lift.roepNaar(newFloor);
-                    System.out.println("[Gast] " + getNaam() + " stapt in lift naar verdieping " + newFloor);
                 }
             }
         }
@@ -194,7 +210,7 @@ public class Gast extends Persoon {
     public void setHotel(Hotel hotel) {
         this.hotel = hotel;
     }
-    
+
     public void setLift(Lift lift) {
         this.lift = lift;
     }
@@ -213,20 +229,16 @@ public class Gast extends Persoon {
 
     public boolean checkinKamer(Kamer kamer) {
         if (kamer == null || kamer.getStatus() != Kamer.KamerStatus.VRIJ) {
-            System.out.println("[Gast] " + getNaam() + " kon niet inchecken!");
             return false;
         }
-
         this.huidigKamer = kamer;
         kamer.setStatus(Kamer.KamerStatus.BEZET);
-        System.out.println("[Gast] " + getNaam() + " incheckt in kamer " + kamer.getKamernummer());
         return true;
     }
 
     public void checkoutKamer() {
         if (huidigKamer != null) {
             huidigKamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
-            System.out.println("[Gast] " + getNaam() + " checkt uit van kamer " + huidigKamer.getKamernummer());
             this.huidigKamer = null;
         }
     }
@@ -235,20 +247,9 @@ public class Gast extends Persoon {
         return huidigKamer;
     }
 
-    // ===== FACILITEITEN SYSTEEM =====
-    
-    /**
-     * Gast gaat naar een specifieke faciliteit.
-     * Zoekt automatisch de faciliteit-coördinaten uit het hotel.
-     * BELANGRIJK: Gast kan alleen naar faciliteiten op dezelfde verdieping (Y) gaan!
-     */
     public void gaatNaarFaciliteit(String faciliteitsType) {
-        if (hotel == null) {
-            System.out.println("[Gast] " + getNaam() + " kan niet naar " + faciliteitsType + " - geen hotel!");
-            return;
-        }
-        
-        // Zoek de faciliteit in het hotel (Areas)
+        if (hotel == null) return;
+
         Area faciliteitsArea = null;
         for (Area area : hotel.getAreas()) {
             if (faciliteitsType.equalsIgnoreCase(area.getAreaType())) {
@@ -256,96 +257,66 @@ public class Gast extends Persoon {
                 break;
             }
         }
-        
-        if (faciliteitsArea == null) {
-            System.out.println("[Gast] " + getNaam() + " kan faciliteit " + faciliteitsType + " niet vinden!");
-            return;
-        }
-        
-        // CHECK: Faciliteit moet op dezelfde verdieping zijn als gast!
+
+        if (faciliteitsArea == null) return;
+
         int faciliteitsY = faciliteitsArea.getY();
         int gastY = (int) this.y;
-        
-        if (faciliteitsY != gastY) {
-            System.out.println("[Gast] " + getNaam() + " kan niet naar " + faciliteitsType 
-                + " - anders verdieping! (Gast op Y=" + gastY + ", Faciliteit op Y=" + faciliteitsY + ")");
-            return;
-        }
-        
-        // Zet doel-coördinaten (het midden van de faciliteit)
-        double newFaciliteitX = faciliteitsArea.getX() + faciliteitsArea.getBreedte() / 2.0;
-        double newFaciliteitY = faciliteitsArea.getY() + 0.5;
-        
-        // VEILIGHEID: Zorg dat doel binnen grid grenzen blijft
-        newFaciliteitX = Math.max(0.5, Math.min(newFaciliteitX, maxX - 0.5));
-        newFaciliteitY = Math.max(0.5, Math.min(newFaciliteitY, maxY - 0.5));
-        
-        this.faciliteitX = newFaciliteitX;
-        this.faciliteitY = newFaciliteitY;
+
+        if (faciliteitsY != gastY) return;
+
+        this.faciliteitX = faciliteitsArea.getX() + faciliteitsArea.getBreedte() / 2.0;
+        this.faciliteitY = faciliteitsArea.getY() + 0.5;
         this.huidigerFaciliteitType = faciliteitsType;
         this.state = State.GAAT_NAAR_FACILITEIT;
         this.destX = this.faciliteitX;
-        
-        System.out.println("[Gast] " + getNaam() + " loopt naar " + faciliteitsType 
-            + " op (" + String.format("%.1f", faciliteitX) + ", " + String.format("%.1f", faciliteitY) + ")");
     }
-    
-    /**
-     * Beweeg naar de doel-coördinaten van de faciliteit (ZOWEL X als Y)
-     */
+
     private void beweegNaarFaciliteit() {
         double dx = faciliteitX - x;
         double dy = faciliteitY - y;
-        
-        // Check if reached destination (beide X en Y)
+
         if (Math.abs(dx) < SPEED * 2 && Math.abs(dy) < SPEED * 2) {
             x = faciliteitX;
             y = faciliteitY;
             this.state = State.IN_FACILITEIT;
-            this.faciliteitsBezoekDuur = 10 + RANDOM.nextInt(20);  // 10-30 ticks blijven
-            System.out.println("[Gast] " + getNaam() + " is aangekomen bij " + huidigerFaciliteitType);
+            this.faciliteitsBezoekDuur = 10 + RANDOM.nextInt(20);
             return;
         }
-        
-        // Beweeg richting X
-        if (dx > 0) {
-            x += SPEED;
-        } else if (dx < 0) {
-            x -= SPEED;
+
+        double volgendeX = x;
+        double volgendeY = y;
+
+        if (dx > 0) volgendeX += SPEED;
+        else if (dx < 0) volgendeX -= SPEED;
+
+        if (dy > 0) volgendeY += SPEED;
+        else if (dy < 0) volgendeY -= SPEED;
+
+        // US3.7 Collision check
+        if (!isVakjeBezet((int)volgendeX, (int)volgendeY)) {
+            x = volgendeX;
+            y = volgendeY;
         }
-        
-        // Beweeg richting Y
-        if (dy > 0) {
-            y += SPEED;
-        } else if (dy < 0) {
-            y -= SPEED;
-        }
-        
-        // VEILIGHEID: Zorg dat gast binnen grenzen blijft
+
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
         y = Math.max(0.5, Math.min(y, maxY - 0.5));
     }
-    
-    /**
-     * Gast zit in faciliteit en geniet ervan
-     */
+
     private void zitInFaciliteit() {
         faciliteitsBezoekDuur--;
-        
         if (faciliteitsBezoekDuur <= 0) {
-            System.out.println("[Gast] " + getNaam() + " verlaat " + huidigerFaciliteitType);
             this.huidigerFaciliteitType = null;
             this.state = State.WANDELEN;
-            this.destX = x;  // Blijf op huidige plek
+            this.destX = x;
         }
     }
-    
+
     public String getHuidigerFaciliteitType() {
         return huidigerFaciliteitType;
     }
-    
+
     public boolean isInFaciliteit() {
         return state == State.IN_FACILITEIT;
     }
 }
-

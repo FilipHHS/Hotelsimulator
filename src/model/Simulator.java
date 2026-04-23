@@ -27,7 +27,7 @@ public class Simulator {
         this.running = false;
         this.clock = new SimulationClock(TICK_INTERVAL);
         this.hteClock = new HTEClock();
-        
+
         // === INITIALISEER LIFT ===
         // Zoek de Schacht area (waar lift beweegt)
         Area schachtArea = null;
@@ -37,7 +37,7 @@ public class Simulator {
                 break;
             }
         }
-        
+
         if (schachtArea != null) {
             // Maak lift aan in schacht
             // X = schacht X-coördinaat + 0.5 (midden van vakje)
@@ -46,31 +46,31 @@ public class Simulator {
             double liftY = (schachtArea.getY() - 1) + 0.5;
             int minY = schachtArea.getY() - 1;
             int maxY = schachtArea.getY() + schachtArea.getHoogte() - 2;
-            
+
             this.lift = new Lift(liftX, liftY, minY, maxY);
             System.out.println("[Simulator] Lift geïnitialiseerd op positie (" + liftX + ", " + liftY + ")");
         } else {
             System.out.println("[Simulator] WAARSCHUWING: Geen Schacht gevonden!");
         }
-        
+
         // Registreer lift als listener
         if (lift != null) {
             hteClock.addListener(lift);
         }
-        
+
         // === REGISTREER ALLE GASTEN EN KOP LIFT AAN ===
         for (Persoon p : hotel.getPersonen()) {
             // Registreer als listener op HTEClock
             if (p instanceof TickListener) {
                 hteClock.addListener((TickListener) p);
             }
-            
+
             // Als het een Gast is: geef hem een referentie naar de lift
             if (p instanceof Gast && lift != null) {
                 ((Gast) p).setLift(lift);
                 System.out.println("[Simulator] Gast '" + p.getNaam() + "' heeft lift-referentie gekregen");
             }
-            
+
             // Als het een Schoonmaker is: geef hem ook lift-referentie
             if (p instanceof Schoonmaker && lift != null) {
                 ((Schoonmaker) p).setLift(lift);
@@ -104,7 +104,7 @@ public class Simulator {
     public HTEClock getHteClock() {
         return hteClock;
     }
-    
+
     public Lift getLift() {
         return lift;
     }
@@ -112,11 +112,11 @@ public class Simulator {
     public void resetClock() {
         clock.reset();
         hteClock = new HTEClock();
-        
+
         if (lift != null) {
             hteClock.addListener(lift);
         }
-        
+
         for (Persoon p : hotel.getPersonen()) {
             if (p instanceof TickListener) {
                 hteClock.addListener((TickListener) p);
@@ -124,39 +124,57 @@ public class Simulator {
         }
     }
 
-     /**
-      * HOOFDMETHODE: Wordt aangeroepen door Timer in main
-      * Dit triggert HTE-ticks als timing klopt
-      */
-     public void tick() {
+    /**
+     * HOOFDMETHODE: Wordt aangeroepen door Timer in main
+     * Dit triggert HTE-ticks als timing klopt
+     */
+    public void tick() {
 
-         // Check of er een echte HTE-tick plaatsvindt
-         if (running && clock.tick()) {
-             System.out.println("[Simulator] HTE-tick #" + clock.getTimestep() + " | Lift Y: " + (lift != null ? String.format("%.1f", lift.getY()) : "N/A"));
-             
-             // Roep HTEClock.tick() aan (die roept alle listeners.onTick() aan)
-             // Dit includes: Lift + Gasten
-             hteClock.tick();
-         }
+        // Check of er een echte HTE-tick plaatsvindt
+        if (running && clock.tick()) {
+            System.out.println("[Simulator] HTE-tick #" + clock.getTimestep() + " | Lift Y: " + (lift != null ? String.format("%.1f", lift.getY()) : "N/A"));
 
-         // UI altijd updaten (ook bij pauze)
-         hotelPanel.repaint();
-     }
-     
-     /**
-      * Stuur een gast naar een faciliteit.
-      * Dit kan aangeroepen worden vanuit events of tests.
-      */
-     public void gastNaarFaciliteit(String gastNaam, String faciliteitsType) {
-         for (Persoon p : hotel.getPersonen()) {
-             if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
-                 ((Gast) p).gaatNaarFaciliteit(faciliteitsType);
-                 System.out.println("[Simulator] Gast '" + gastNaam + "' gestuurd naar " + faciliteitsType);
-                 return;
-             }
-         }
-         System.out.println("[Simulator] Gast '" + gastNaam + "' niet gevonden!");
-     }
- }
+            // Roep HTEClock.tick() aan (die roept alle listeners.onTick() aan)
+            // Dit includes: Lift + Gasten + Schoonmakers
+            hteClock.tick();
 
+            // === NIEUW: US3.7 Posities synchroniseren in het grid ===
+            // Na de beweging slaan we de nieuwe posities op in het Hotel
+            for (Persoon p : hotel.getPersonen()) {
+                int gridX = 0;
+                int gridY = 0;
 
+                // We zetten de 'double' positie om naar een 'int' voor het grid vakje
+                if (p instanceof Gast) {
+                    gridX = (int) ((Gast) p).getX();
+                    gridY = (int) ((Gast) p).getY();
+                } else if (p instanceof Schoonmaker) {
+                    gridX = (int) ((Schoonmaker) p).getX();
+                    gridY = (int) ((Schoonmaker) p).getY();
+                }
+
+                // Werk het administratieve grid bij in het hotel object
+                hotel.updatePersoonPositie(p, gridX, gridY);
+            }
+            // === EINDE NIEUW ===
+        }
+
+        // UI altijd updaten (ook bij pauze voor soepele rendering)
+        hotelPanel.repaint();
+    }
+
+    /**
+     * Stuur een gast naar een faciliteit.
+     * Dit kan aangeroepen worden vanuit events of tests.
+     */
+    public void gastNaarFaciliteit(String gastNaam, String faciliteitsType) {
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
+                ((Gast) p).gaatNaarFaciliteit(faciliteitsType);
+                System.out.println("[Simulator] Gast '" + gastNaam + "' gestuurd naar " + faciliteitsType);
+                return;
+            }
+        }
+        System.out.println("[Simulator] Gast '" + gastNaam + "' niet gevonden!");
+    }
+}
