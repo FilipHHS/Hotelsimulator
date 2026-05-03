@@ -109,10 +109,10 @@ public class main {
                 // --- EERSTE SETUP ---
                 // We laden direct het eerste hotel uit de lijst zodat het scherm niet leeg is.
                 Hotel hotel = LayoutLoader.laadLayout("layouts/" + layouts[0]);
-                
+
                 // === KAMERS AANMAKEN ===
                 initializeKamers(hotel);
-                
+
                 hotelPanel = new HotelPanel(hotel); // Maak het teken-veld aan
                 addTestGuests(hotel); // Zet Alice, Bob en Charlie in het hotel
                 addSchoonmakers(hotel); // Voeg schoonmakers toe
@@ -120,7 +120,7 @@ public class main {
                 // Maak de simulator-engine aan.
                 simulator = new Simulator(hotel, hotelPanel);
                 simulator.pause(); // De simulatie staat stil tot de gebruiker op Start klikt.
-                
+
                 // === LINK LIFT AAN PANEL VOOR VISUALISATIE ===
                 if (simulator.getLift() != null) {
                     hotelPanel.setLift(simulator.getLift());
@@ -141,21 +141,28 @@ public class main {
                 simulationTimer = new Timer(50, e -> {
                     // Roep simulator.tick() aan - dit bepaalt intern of een HTE-tick nodig is
                     simulator.tick();
-                    
+
                     // Update UI met huidige timestep (alleen weergeven)
                     timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
-                    
-                    // TEST: Na 5 seconden: stuur Alice naar Restaurant
+
+                    // === EVENTS: Stuur gasten naar faciliteiten ===
                     int timestep = simulator.getClock().getTimestep();
-                     if (timestep == 50) {
+
+                    // EVENT 1: Alice gaat naar Restaurant (na 2.5 sec = 50 ticks)
+                    if (timestep == 50) {
+                        System.out.println("\n🎬 EVENT 1 TRIGGERED! Alice gaat naar Restaurant!");
                         simulator.gastNaarFaciliteit("Alice", "Restaurant");
                     }
-                    // Na 15 seconden: stuur Bob naar Fitness
+
+                    // EVENT 2: Bob gaat naar Fitness (na 7.5 sec = 150 ticks)
                     if (timestep == 150) {
+                        System.out.println("\n🎬 EVENT 2 TRIGGERED! Bob gaat naar Fitness!");
                         simulator.gastNaarFaciliteit("Bob", "Fitness");
                     }
-                    // Na 25 seconden: stuur Charlie naar Lounge
+
+                    // EVENT 3: Charlie gaat naar Lounge (na 12.5 sec = 250 ticks)
                     if (timestep == 250) {
+                        System.out.println("\n🎬 EVENT 3 TRIGGERED! Charlie gaat naar Lounge!");
                         simulator.gastNaarFaciliteit("Charlie", "Lounge");
                     }
                 });
@@ -210,7 +217,7 @@ public class main {
             simulator = new Simulator(newHotel, hotelPanel);
             simulator.resetClock(); // Belangrijk: De klok moet weer op 0 beginnen.
             simulator.pause(); // Het nieuwe hotel begint altijd gepauzeerd.
-            
+
             // === LINK LIFT AAN PANEL ===
             if (simulator.getLift() != null) {
                 hotelPanel.setLift(simulator.getLift());
@@ -240,7 +247,7 @@ public class main {
         // OPMERKING: Alice incheckt niet in kamer, want ze is op verdieping 6 (Restaurant)
         hotel.addPersoon(gast1);
 
-        // Doe hetzelfde voor Bob op (3,6) 
+        // Doe hetzelfde voor Bob op (3,6)
         Gast gast2 = new Gast("Bob", 3, 6);
         gast2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast2.setHotel(hotel);
@@ -265,22 +272,22 @@ public class main {
                 roomAreas.add(area);
             }
         }
-        
+
         // Maak kamers aan en koppel ze aan areas
         // Voor nu: 4 kamers op vaste nummers
         int[] kamerNummers = {101, 102, 201, 202};
         String[] types = {"Luxe", "Luxe", "Standaard", "Standaard"};
-        
+
         for (int i = 0; i < kamerNummers.length && i < roomAreas.size(); i++) {
             Kamer kamer = new Kamer(kamerNummers[i], types[i]);
             kamer.setArea(roomAreas.get(i));  // Koppel aan Area
-            
+
             // TEST: meerdere kamers zijn vuil voor testing schoonmakers
             // Maak eerste 3 kamers viez zodat schoonmakers kunnen spreiden
             if (i < 3) {
                 kamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
             }
-            
+
             hotel.addKamer(kamer);
         }
     }

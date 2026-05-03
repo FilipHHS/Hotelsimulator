@@ -91,6 +91,10 @@ public class Gast extends Persoon {
                 }
             }
         }
+        
+        // === LOGGING: TOON HUIDGE TOESTAND ===
+        System.out.printf("[%s] Pos(%.1f, %.1f) State:%s InLift:%s MaxBounds(%d,%d)%n", 
+            getNaam(), x, y, state, inLift, maxX, maxY);
     }
 
     /**
@@ -101,10 +105,13 @@ public class Gast extends Persoon {
             int keuze = RANDOM.nextInt(10);
             if (keuze < 4) {
                 destX = Math.max(2.0, x - 3);
+                System.out.println("  → " + getNaam() + " kiest LINKS, nieuwe destX: " + destX);
             } else if (keuze < 8) {
                 destX = Math.min(maxX - 3.0, x + 3);
+                System.out.println("  → " + getNaam() + " kiest RECHTS, nieuwe destX: " + destX);
             } else {
                 destX = x;
+                System.out.println("  → " + getNaam() + " blijft STAAN");
             }
             stapsInRichting = 0;
             maxStapsRichting = RANDOM.nextInt(3) + 2;
@@ -121,18 +128,25 @@ public class Gast extends Persoon {
             volgendeX = x - SPEED;
         }
 
+        // === BOUNDARY CHECK EERST (VOORKOMEN OUT OF BOUNDS) ===
+        if (volgendeX < 1.0 || volgendeX > maxX - 1.0) {
+            System.out.println("  ⚠️  BOUNDARY EDGE! " + getNaam() + " probeerde naar X=" + String.format("%.1f", volgendeX) + " (max=" + maxX + "), stopt!");
+            stapsInRichting = maxStapsRichting;  // Forceer nieuwe richting
+            return;
+        }
+
         // --- US3.7 COLLISION CHECK ---
         if (isVakjeBezet((int)volgendeX, (int)y)) {
-            // Vakje is bezet, we stoppen en proberen volgende tick opnieuw (of andere richting)
+            System.out.println("  ⚠️  BOTSING! " + getNaam() + " kan niet naar (" + (int)volgendeX + ", " + (int)y + ") - vakje bezet!");
             stapsInRichting = maxStapsRichting;
             return;
         }
 
         x = volgendeX;
-        x = Math.max(0.5, Math.min(x, maxX - 0.5));
         stapsInRichting++;
 
         if (RANDOM.nextDouble() < 0.03) {
+            System.out.println("  → " + getNaam() + " wilt verdieping wisselen!");
             wiltVerdiepingWisselen();
         }
     }
@@ -187,16 +201,32 @@ public class Gast extends Persoon {
                 System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
             }
         } else {
-            if (lift != null && Math.abs(lift.getY() - this.y) < 0.2 && lift.isIdle()) {
-                int currentFloor = (int) y;
-                int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
-                newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
+            // === LIFT LOGIC ===
+            if (lift != null) {
+                System.out.printf("  [LIFT DEBUG] %s: LiftY=%.1f, GastY=%.1f, Diff=%.1f, LiftIdle=%s%n", 
+                    getNaam(), lift.getY(), this.y, Math.abs(lift.getY() - this.y), lift.isIdle());
+                
+                if (Math.abs(lift.getY() - this.y) < 0.2 && lift.isIdle()) {
+                    int currentFloor = (int) y;
+                    int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
+                    newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
 
-                if (lift.voegGastToe(this)) {
-                    this.inLift = true;
-                    this.destX = newFloor + 0.5;
-                    this.state = State.IN_LIFT;
-                    lift.roepNaar(newFloor);
+                    System.out.println("  [LIFT DEBUG] " + getNaam() + " probeert in te stappen naar verdieping " + newFloor);
+                    
+                    if (lift.voegGastToe(this)) {
+                        this.inLift = true;
+                        this.destX = newFloor + 0.5;
+                        this.state = State.IN_LIFT;
+                        lift.roepNaar(newFloor);
+                        System.out.println("  ✅ [LIFT] " + getNaam() + " IN LIFT!");
+                    } else {
+                        System.out.println("  ❌ [LIFT] " + getNaam() + " kon niet instappen!");
+                    }
+                } else {
+                    System.out.printf("  [LIFT] %s wacht: Positie %s, Lift %s%n",
+                        getNaam(),
+                        (Math.abs(lift.getY() - this.y) < 0.2) ? "OK" : "MISMATCH",
+                        lift.isIdle() ? "IDLE" : "MOVING");
                 }
             }
         }

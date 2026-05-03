@@ -87,14 +87,20 @@ public class Lift implements TickListener {
         return true;
     }
 
-    /**
-     * Persoon stapt uit de lift
-     */
-    public void verwijderGast(Persoon persoon) {
-        if (passagiers.remove(persoon)) {
-            System.out.println("[Lift] " + persoon.getNaam() + " stapt uit op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
-        }
-    }
+     /**
+      * Persoon stapt uit de lift
+      */
+     public void verwijderGast(Persoon persoon) {
+         if (passagiers.remove(persoon)) {
+             System.out.println("[Lift] " + persoon.getNaam() + " stapt uit op verdieping " + (int)y + " | Passagiers nu: " + passagiers.size());
+             
+             // === FIX: Als lift leeg is, zeg IDLE zodat anderen kunnen instappen ===
+             if (passagiers.isEmpty()) {
+                 this.state = LiftState.IDLE;
+                 System.out.println("[Lift] LEEG! State nu IDLE");
+             }
+         }
+     }
 
     /**
      * Geef alle passagiers terug

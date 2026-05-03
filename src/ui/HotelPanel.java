@@ -12,6 +12,7 @@ import java.util.List;
 
 /**
  * Dit paneel is verantwoordelijk voor het visueel weergeven van het hotel.
+ * US4.4: Grafische weergave implementatie voor het volgen van de simulatie.
  */
 public class HotelPanel extends JPanel {
 
@@ -33,7 +34,7 @@ public class HotelPanel extends JPanel {
         updateDimensions();
         repaint();
     }
-    
+
     public void setLift(Lift lift) {
         this.lift = lift;
     }
@@ -67,6 +68,16 @@ public class HotelPanel extends JPanel {
         int hotelHoogte = hotel.getHoogte() * VAKJE_GROOTTE;
         int offsetX = (getWidth() - hotelBreedte) / 2;
         int offsetY = (getHeight() - hotelHoogte) / 2;
+
+        // === US4.4: HULPLIJNEN (GRID) ===
+        // Teken een licht grijs grid zodat de gebruiker de vakjes/afstanden ziet
+        g.setColor(new Color(230, 230, 230));
+        for (int i = 0; i <= hotel.getBreedte(); i++) {
+            g.drawLine(offsetX + i * VAKJE_GROOTTE, offsetY, offsetX + i * VAKJE_GROOTTE, offsetY + hotelHoogte);
+        }
+        for (int j = 0; j <= hotel.getHoogte(); j++) {
+            g.drawLine(offsetX, offsetY + j * VAKJE_GROOTTE, offsetX + hotelBreedte, offsetY + j * VAKJE_GROOTTE);
+        }
 
         // Areas tekenen
         List<Area> areas = hotel.getAreas();
@@ -106,23 +117,18 @@ public class HotelPanel extends JPanel {
         }
 
         // === TEKEN LIFT (BEWEGEND OBJECT) ===
-        // Dit vervangt de statische 1x1 Lift area uit Areas!
         if (lift != null) {
-            // Teken lift als 1x1 vakje
             int liftX = (int)(lift.getX() * VAKJE_GROOTTE) + offsetX - VAKJE_GROOTTE/2;
             int liftY = (int)(lift.getY() * VAKJE_GROOTTE) + offsetY - VAKJE_GROOTTE/2;
-            
-            // Teken lift als oranje vierkant (VAKJE_GROOTTE groot)
+
             g.setColor(new Color(200, 100, 0));  // Oranje
             g.fillRect(liftX, liftY, VAKJE_GROOTTE, VAKJE_GROOTTE);
-            
-            // Rand
+
             g.setColor(Color.BLACK);
             Graphics2D g2d = (Graphics2D) g;
             g2d.setStroke(new BasicStroke(2));
             g.drawRect(liftX, liftY, VAKJE_GROOTTE, VAKJE_GROOTTE);
-            
-            // Teken "L" erin (groot)
+
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 30));
             FontMetrics fm = g.getFontMetrics();
@@ -135,46 +141,42 @@ public class HotelPanel extends JPanel {
         for (Persoon persoon : hotel.getPersonen()) {
             if (persoon instanceof Gast) {
                 Gast gast = (Gast) persoon;
-                // Gebruik doubles voor smooth pixel-gebaseerde coördinaten
                 int px = (int)(gast.getX() * VAKJE_GROOTTE) + offsetX - 8;
                 int py = (int)(gast.getY() * VAKJE_GROOTTE) + offsetY - 8;
 
-                // Teken met gast's eigen kleur
                 g.setColor(gast.getKleur());
                 g.fillOval(px, py, 16, 16);
 
-                // Teken rand (donkerder versie van dezelfde kleur)
                 g.setColor(new Color(
-                    Math.max(0, gast.getKleur().getRed() - 80),
-                    Math.max(0, gast.getKleur().getGreen() - 80),
-                    Math.max(0, gast.getKleur().getBlue() - 80)
+                        Math.max(0, gast.getKleur().getRed() - 80),
+                        Math.max(0, gast.getKleur().getGreen() - 80),
+                        Math.max(0, gast.getKleur().getBlue() - 80)
                 ));
                 g.drawOval(px, py, 16, 16);
 
-                // Teken naam als tooltip (optioneel, heel klein)
+                // US4.4: Naam iets duidelijker boven de gast tekenen voor betere volgbaarheid
                 g.setColor(Color.BLACK);
-                g.setFont(new Font("Arial", Font.PLAIN, 8));
-                g.drawString(gast.getNaam().substring(0, Math.min(3, gast.getNaam().length())), px + 2, py + 8);
+                g.setFont(new Font("Arial", Font.BOLD, 10));
+                g.drawString(gast.getNaam(), px - 5, py - 5);
             } else if (persoon instanceof Schoonmaker) {
                 Schoonmaker schoonmaker = (Schoonmaker) persoon;
-                // Teken schoonmaker op dezelfde manier als gast
                 int px = (int)(schoonmaker.getX() * VAKJE_GROOTTE) + offsetX - 8;
                 int py = (int)(schoonmaker.getY() * VAKJE_GROOTTE) + offsetY - 8;
 
-                // Teken met schoonmaker's kleur (grijs)
                 g.setColor(schoonmaker.getKleur());
-                g.fillRect(px, py, 16, 16);  // Vierkant i.p.v. cirkel
+                g.fillRect(px, py, 16, 16);
 
-                // Teken rand
                 g.setColor(Color.BLACK);
                 g.drawRect(px, py, 16, 16);
 
-                // Teken label
                 g.setColor(Color.BLACK);
-                g.setFont(new Font("Arial", Font.PLAIN, 8));
+                g.setFont(new Font("Arial", Font.BOLD, 10));
                 g.drawString("S", px + 5, py + 8);
             }
         }
+
+        // === US4.4: LEGENDA TOEVOEGEN ===
+        tekenLegenda(g);
 
         // toon status (pause/active)
         if (!running) {
@@ -187,8 +189,41 @@ public class HotelPanel extends JPanel {
         }
     }
 
+    /**
+     * Hulpmethode voor US4.4: Tekent een legenda zodat de gebruiker de simulatie begrijpt.
+     */
+    private void tekenLegenda(Graphics g) {
+        int lx = 10;
+        int ly = getHeight() - 70;
+
+        // Achtergrond legenda
+        g.setColor(new Color(255, 255, 255, 220));
+        g.fillRect(lx, ly, 130, 60);
+        g.setColor(Color.BLACK);
+        g.drawRect(lx, ly, 130, 60);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 11));
+
+        // Gast
+        g.setColor(Color.BLUE);
+        g.fillOval(lx + 10, ly + 10, 10, 10);
+        g.setColor(Color.BLACK);
+        g.drawString("Gast", lx + 30, ly + 20);
+
+        // Schoonmaker
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(lx + 10, ly + 25, 10, 10);
+        g.setColor(Color.BLACK);
+        g.drawString("Schoonmaker", lx + 30, ly + 35);
+
+        // Lift
+        g.setColor(new Color(200, 100, 0));
+        g.fillRect(lx + 10, ly + 40, 10, 10);
+        g.setColor(Color.BLACK);
+        g.drawString("Lift", lx + 30, ly + 50);
+    }
+
     private String getLabel(Area area) {
-        // ...existing code...
         switch (area.getAreaType()) {
             case "Room":
                 return area.getClassification() != null ?
@@ -210,17 +245,14 @@ public class HotelPanel extends JPanel {
             case "Room":
                 String c = area.getClassification();
                 if (c == null) return new Color(200, 230, 255);
-
                 if (c.contains("1")) return new Color(200, 230, 255);
                 if (c.contains("2")) return new Color(150, 200, 255);
                 if (c.contains("3")) return new Color(100, 170, 255);
                 if (c.contains("4")) return new Color(50, 130, 255);
                 if (c.contains("5")) return new Color(0, 80, 200);
-
                 return new Color(200, 230, 255);
-
             case "Lobby": return new Color(255, 220, 50);
-            case "Schacht": return new Color(220, 220, 220);  // Grijze schacht
+            case "Schacht": return new Color(220, 220, 220);
             case "Lift": return new Color(255, 150, 0);
             case "Staircase": return new Color(100, 200, 100);
             case "Restaurant": return new Color(255, 100, 100);
