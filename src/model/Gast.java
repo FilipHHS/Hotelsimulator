@@ -35,6 +35,10 @@ public class Gast extends Persoon {
         IN_LIFT,
         GAAT_NAAR_FACILITEIT,
         IN_FACILITEIT,
+        NAAR_LOBBY,         // Loopt naar lobby voor checkout
+        IN_LOBBY,            // Is in lobby, checkt uit
+        NAAR_UITGANG,        // Loopt naar uitgang
+        VERTREKT             // Verlaat hotel
     }
     private State state = State.WANDELEN;
 
@@ -42,6 +46,15 @@ public class Gast extends Persoon {
     private String huidigerFaciliteitType = null;
     private double faciliteitX, faciliteitY;
     private int faciliteitsBezoekDuur = 0;
+    
+    // === CHECKOUT SYSTEEM ===
+    private static final double LOBBY_X = 7.5;      // Lobby X-positie
+    private static final double LOBBY_Y = 1.5;      // Lobby Y-positie (begane grond)
+    private static final double UITGANG_X = 10.0;   // Uitgang (buiten kaart)
+    private static final double UITGANG_Y = 1.5;
+    private int verblijfDuur = 0;                   // Ticks in hotel
+    private static final int MAX_VERBLIJF = 500;    // Na 500 ticks exit gast
+    private boolean klaarMetVerblijf = false;
 
     // === RANDOM WALK ===
     private int stapsInRichting = 0;
@@ -130,17 +143,11 @@ public class Gast extends Persoon {
 
         // === BOUNDARY CHECK EERST (VOORKOMEN OUT OF BOUNDS) ===
         if (volgendeX < 1.0 || volgendeX > maxX - 1.0) {
-            System.out.println("  ⚠️  BOUNDARY EDGE! " + getNaam() + " probeerde naar X=" + String.format("%.1f", volgendeX) + " (max=" + maxX + "), stopt!");
             stapsInRichting = maxStapsRichting;  // Forceer nieuwe richting
             return;
         }
 
-        // --- US3.7 COLLISION CHECK ---
-        if (isVakjeBezet((int)volgendeX, (int)y)) {
-            System.out.println("  ⚠️  BOTSING! " + getNaam() + " kan niet naar (" + (int)volgendeX + ", " + (int)y + ") - vakje bezet!");
-            stapsInRichting = maxStapsRichting;
-            return;
-        }
+        // COLLISION DETECTION VERWIJDERD - Entiteiten kunnen door elkaar heen gaan
 
         x = volgendeX;
         stapsInRichting++;
@@ -149,16 +156,6 @@ public class Gast extends Persoon {
             System.out.println("  → " + getNaam() + " wilt verdieping wisselen!");
             wiltVerdiepingWisselen();
         }
-    }
-
-    /**
-     * Hulp-methode voor US3.7 om te checken of iemand anders op een vakje staat.
-     */
-    private boolean isVakjeBezet(int gx, int gy) {
-        if (hotel == null) return false;
-        Persoon ander = hotel.getPersoonOp(gx, gy);
-        // Bezet als er iemand staat die ik niet zelf ben
-        return (ander != null && ander != this);
     }
 
     private void wiltVerdiepingWisselen() {
@@ -179,10 +176,8 @@ public class Gast extends Persoon {
 
         volgendeX = (dx > 0) ? x + SPEED : x - SPEED;
 
-        // US3.7 Collision check ook hier
-        if (!isVakjeBezet((int)volgendeX, (int)y)) {
-            x = volgendeX;
-        }
+        // COLLISION DETECTION VERWIJDERD - Entiteiten kunnen door elkaar heen
+        x = volgendeX;
 
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
     }
@@ -193,13 +188,11 @@ public class Gast extends Persoon {
             int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
             newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
 
-            // Check of landingsplek trap vrij is
-            if (!isVakjeBezet((int)x, newFloor)) {
-                this.y = newFloor + 0.5;
-                this.destX = x;
-                this.state = State.WANDELEN;
-                System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
-            }
+            // COLLISION DETECTION VERWIJDERD - Gasten kunnen via trap gaan
+            this.y = newFloor + 0.5;
+            this.destX = x;
+            this.state = State.WANDELEN;
+            System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
         } else {
             // === LIFT LOGIC ===
             if (lift != null) {
@@ -361,11 +354,9 @@ public class Gast extends Persoon {
         if (dy > 0) volgendeY += SPEED;
         else if (dy < 0) volgendeY -= SPEED;
 
-        // US3.7 Collision check
-        if (!isVakjeBezet((int)volgendeX, (int)volgendeY)) {
-            x = volgendeX;
-            y = volgendeY;
-        }
+        // COLLISION DETECTION VERWIJDERD - Entiteiten kunnen door elkaar heen
+        x = volgendeX;
+        y = volgendeY;
 
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
         y = Math.max(0.5, Math.min(y, maxY - 0.5));
