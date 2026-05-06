@@ -52,9 +52,6 @@ public class Gast extends Persoon {
     private static final double LOBBY_Y = 1.5;      // Lobby Y-positie (begane grond)
     private static final double UITGANG_X = 10.0;   // Uitgang (buiten kaart)
     private static final double UITGANG_Y = 1.5;
-    private int verblijfDuur = 0;                   // Ticks in hotel
-    private static final int MAX_VERBLIJF = 500;    // Na 500 ticks exit gast
-    private boolean klaarMetVerblijf = false;
 
     // === RANDOM WALK ===
     private int stapsInRichting = 0;
@@ -87,6 +84,7 @@ public class Gast extends Persoon {
                 case IN_FACILITEIT:
                     zitInFaciliteit();
                     break;
+                // NIEUWE STATES - niet hoeven ingevoerd voor nu, gasten blijven in WANDELEN
             }
         } else {
             if (lift != null) {
@@ -100,31 +98,23 @@ public class Gast extends Persoon {
                     lift.verwijderGast(this);
                     this.inLift = false;
                     this.state = State.WANDELEN;
-                    System.out.println("[Gast] " + getNaam() + " stapt uit lift op verdieping " + liftFloor);
                 }
             }
         }
-        
-        // === LOGGING: TOON HUIDGE TOESTAND ===
-        System.out.printf("[%s] Pos(%.1f, %.1f) State:%s InLift:%s MaxBounds(%d,%d)%n", 
-            getNaam(), x, y, state, inLift, maxX, maxY);
     }
 
     /**
-     * US3.7: Random walk die controleert of het grid-vakje vrij is.
+     * US3.7: Random walk - geen collision detection meer (entiteiten via elkaar)
      */
     private void randomWalk() {
         if (stapsInRichting >= maxStapsRichting) {
             int keuze = RANDOM.nextInt(10);
             if (keuze < 4) {
                 destX = Math.max(2.0, x - 3);
-                System.out.println("  → " + getNaam() + " kiest LINKS, nieuwe destX: " + destX);
             } else if (keuze < 8) {
                 destX = Math.min(maxX - 3.0, x + 3);
-                System.out.println("  → " + getNaam() + " kiest RECHTS, nieuwe destX: " + destX);
             } else {
                 destX = x;
-                System.out.println("  → " + getNaam() + " blijft STAAN");
             }
             stapsInRichting = 0;
             maxStapsRichting = RANDOM.nextInt(3) + 2;
@@ -153,7 +143,6 @@ public class Gast extends Persoon {
         stapsInRichting++;
 
         if (RANDOM.nextDouble() < 0.03) {
-            System.out.println("  → " + getNaam() + " wilt verdieping wisselen!");
             wiltVerdiepingWisselen();
         }
     }
