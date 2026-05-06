@@ -4,7 +4,6 @@ import java.util.Random;
 
 /**
  * GAST - Hotelgast die random wandelt (links-rechts) op dezelfde verdieping
- * US3.7: Houdt nu rekening met het positiegrid van het hotel om botsingen te voorkomen.
  */
 public class Gast extends Persoon {
     private static final Random RANDOM = new Random();
@@ -130,17 +129,11 @@ public class Gast extends Persoon {
 
         // === BOUNDARY CHECK EERST (VOORKOMEN OUT OF BOUNDS) ===
         if (volgendeX < 1.0 || volgendeX > maxX - 1.0) {
-            System.out.println("  ⚠️  BOUNDARY EDGE! " + getNaam() + " probeerde naar X=" + String.format("%.1f", volgendeX) + " (max=" + maxX + "), stopt!");
+            System.out.println("    BOUNDARY EDGE! " + getNaam() + " probeerde naar X=" + String.format("%.1f", volgendeX) + " (max=" + maxX + "), stopt!");
             stapsInRichting = maxStapsRichting;  // Forceer nieuwe richting
             return;
         }
 
-        // --- US3.7 COLLISION CHECK ---
-        if (isVakjeBezet((int)volgendeX, (int)y)) {
-            System.out.println("  ⚠️  BOTSING! " + getNaam() + " kan niet naar (" + (int)volgendeX + ", " + (int)y + ") - vakje bezet!");
-            stapsInRichting = maxStapsRichting;
-            return;
-        }
 
         x = volgendeX;
         stapsInRichting++;
@@ -151,15 +144,6 @@ public class Gast extends Persoon {
         }
     }
 
-    /**
-     * Hulp-methode voor US3.7 om te checken of iemand anders op een vakje staat.
-     */
-    private boolean isVakjeBezet(int gx, int gy) {
-        if (hotel == null) return false;
-        Persoon ander = hotel.getPersoonOp(gx, gy);
-        // Bezet als er iemand staat die ik niet zelf ben
-        return (ander != null && ander != this);
-    }
 
     private void wiltVerdiepingWisselen() {
         this.usesTrap = RANDOM.nextBoolean();
@@ -179,10 +163,6 @@ public class Gast extends Persoon {
 
         volgendeX = (dx > 0) ? x + SPEED : x - SPEED;
 
-        // US3.7 Collision check ook hier
-        if (!isVakjeBezet((int)volgendeX, (int)y)) {
-            x = volgendeX;
-        }
 
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
     }
@@ -193,13 +173,8 @@ public class Gast extends Persoon {
             int newFloor = currentFloor + (RANDOM.nextBoolean() ? 1 : -1);
             newFloor = Math.max(0, Math.min(newFloor, maxY - 1));
 
-            // Check of landingsplek trap vrij is
-            if (!isVakjeBezet((int)x, newFloor)) {
-                this.y = newFloor + 0.5;
-                this.destX = x;
-                this.state = State.WANDELEN;
-                System.out.println("[Gast] " + getNaam() + " gaat trap naar verdieping " + newFloor);
-            }
+
+
         } else {
             // === LIFT LOGIC ===
             if (lift != null) {
@@ -218,9 +193,9 @@ public class Gast extends Persoon {
                         this.destX = newFloor + 0.5;
                         this.state = State.IN_LIFT;
                         lift.roepNaar(newFloor);
-                        System.out.println("  ✅ [LIFT] " + getNaam() + " IN LIFT!");
+                        System.out.println("   [LIFT] " + getNaam() + " IN LIFT!");
                     } else {
-                        System.out.println("  ❌ [LIFT] " + getNaam() + " kon niet instappen!");
+                        System.out.println("   [LIFT] " + getNaam() + " kon niet instappen!");
                     }
                 } else {
                     System.out.printf("  [LIFT] %s wacht: Positie %s, Lift %s%n",
@@ -266,7 +241,7 @@ public class Gast extends Persoon {
     public boolean checkinKamer(Kamer kamer) {
         // Controleer of kamer beschikbaar is
         if (kamer == null || kamer.getStatus() != Kamer.KamerStatus.VRIJ) {
-            System.out.println("❌ [US3.1] " + getNaam() + " kon niet inchecken - kamer niet vrij!");
+            System.out.println(" [US3.1] " + getNaam() + " kon niet inchecken - kamer niet vrij!");
             return false;
         }
         
@@ -280,7 +255,7 @@ public class Gast extends Persoon {
             this.y = kamer.getArea().getY() + 0.5;
         }
         
-        System.out.println("✅ [US3.1 Scenario 1] " + getNaam() + " is ingecheckt in kamer " + kamer.getKamernummer());
+        System.out.println(" [US3.1 Scenario 1] " + getNaam() + " is ingecheckt in kamer " + kamer.getKamernummer());
         return true;
     }
 
@@ -361,11 +336,7 @@ public class Gast extends Persoon {
         if (dy > 0) volgendeY += SPEED;
         else if (dy < 0) volgendeY -= SPEED;
 
-        // US3.7 Collision check
-        if (!isVakjeBezet((int)volgendeX, (int)volgendeY)) {
-            x = volgendeX;
-            y = volgendeY;
-        }
+
 
         x = Math.max(0.5, Math.min(x, maxX - 0.5));
         y = Math.max(0.5, Math.min(y, maxY - 0.5));
