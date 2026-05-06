@@ -164,6 +164,77 @@ public class Simulator {
     }
 
     /**
+     * US3.1 Scenario 1: Gast inchecken in een vrije kamer
+     * - Zoek vrije kamer van gewenst type
+     * - Roep checkinKamer() aan op de gast
+     * 
+     * Acceptatiecriterium:
+     * - Gast wordt gekoppeld aan kamer van gevraagde type
+     * - Kamerstatus verandert naar "BEZET"
+     */
+    public boolean gastCheckin(String gastNaam, String kamerType) {
+        // Zoek de gast
+        Gast targetGast = null;
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
+                targetGast = (Gast) p;
+                break;
+            }
+        }
+        
+        if (targetGast == null) {
+            System.out.println(" [US3.1] Gast '" + gastNaam + "' niet gevonden!");
+            return false;
+        }
+        
+        // Zoek vrije kamer van gewenst type
+        Kamer vrijeKamer = hotel.zoekVrijeKamer(kamerType);
+        if (vrijeKamer == null) {
+            System.out.println(" [US3.1] Geen vrije " + kamerType + " kamer beschikbaar!");
+            return false;
+        }
+        
+        // Check in
+        boolean succes = targetGast.checkinKamer(vrijeKamer);
+        if (succes) {
+            System.out.println(" [US3.1] " + gastNaam + " is ingecheckt in kamer " + vrijeKamer.getKamernummer());
+        }
+        return succes;
+    }
+
+    /**
+     * US3.1 Scenario 2: Gast uitchecken en verwijderen uit simulatie
+     * - Checkout kamer (status → SCHOONMAKEN/VIES)
+     * - Verwijder gast uit simulatie (verlaat hotel)
+     * 
+     * Acceptatiecriterium:
+     * - Gast verlaat het hotel (verwijderd uit simulatie)
+     * - Kamerstatus gemarkeerd als "Vies" (SCHOONMAKEN)
+     */
+    public void gastCheckout(String gastNaam) {
+        // Zoek de gast
+        Gast targetGast = null;
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
+                targetGast = (Gast) p;
+                break;
+            }
+        }
+        
+        if (targetGast == null) {
+            System.out.println("[US3.1] Gast '" + gastNaam + "' niet gevonden!");
+            return;
+        }
+        
+        // Checkout
+        targetGast.checkoutKamer();
+        
+        // Verwijder uit simulatie
+        hotel.verwijderGast(targetGast);
+        System.out.println("[US3.1 Scenario 2] " + gastNaam + " is volledig uit het hotel vertrokken.");
+    }
+
+    /**
      * Stuur een gast naar een faciliteit.
      * Dit kan aangeroepen worden vanuit events of tests.
      */

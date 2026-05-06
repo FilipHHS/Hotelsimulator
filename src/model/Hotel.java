@@ -99,4 +99,42 @@ public class Hotel {
         }
         return null; // Geen vrije kamer van dit type gevonden
     }
+
+    /**
+     * US3.1: Verwijder een gast uit het hotel (bij checkout)
+     * - Gast verlaat de simulatie volledig
+     * - Wordt verwijderd uit de lijst met personen
+     */
+    public void verwijderGast(Persoon gast) {
+        if (personen.remove(gast)) {
+            System.out.println("[US3.1] Gast '" + gast.getNaam() + "' is uit het hotel vertrokken.");
+            
+            // Wis ook de positie uit het grid
+            for (int i = 0; i < hoogte; i++) {
+                for (int j = 0; j < breedte; j++) {
+                    if (positieGrid[i][j] == gast) {
+                        positieGrid[i][j] = null;
+                    }
+                }
+            }
+        } else {
+            System.out.println("[US3.1] Gast '" + gast.getNaam() + "' kon niet worden verwijderd.");
+        }
+    }
+
+    /**
+     * US3.1: Zoek alle gasten die in een bepaalde kamer verblijven
+     */
+    public List<Gast> zoekGastenInKamer(Kamer kamer) {
+        List<Gast> gastenInKamer = new ArrayList<>();
+        for (Persoon p : personen) {
+            if (p instanceof Gast) {
+                Gast gast = (Gast) p;
+                if (gast.getHuidigKamer() != null && gast.getHuidigKamer().equals(kamer)) {
+                    gastenInKamer.add(gast);
+                }
+            }
+        }
+        return gastenInKamer;
+    }
 }

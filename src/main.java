@@ -134,9 +134,10 @@ public class main {
                 frame.setVisible(true); // Toon het venster
 
                 /**
-                 * DE KLOK (Timer) - HTE TICK ARCHITECTUUR:
-                 * De timer 'vuurt' elke 50ms (UI refresh rate).
-                 * De simulator bepaalt zelf via SimulationClock wanneer een echte HTE-tick moet plaatsvinden.
+                 * DE KLOK (Timer) - HTE TICK ARCHITECTUUR MET US3.1 CHECK-IN/CHECK-OUT TESTS:
+                 * - Timer 'vuurt' elke 50ms (UI refresh rate)
+                 * - Simulator bepaalt via SimulationClock wanneer een HTE-tick plaatsvindt
+                 * - NIEUW: US3.1 test Scenario 1 (CHECK-IN) en Scenario 2 (CHECK-OUT)
                  */
                 simulationTimer = new Timer(50, e -> {
                     // Roep simulator.tick() aan - dit bepaalt intern of een HTE-tick nodig is
@@ -145,25 +146,83 @@ public class main {
                     // Update UI met huidige timestep (alleen weergeven)
                     timestepLabel.setText("Timestep: " + simulator.getClock().getTimestep());
 
-                    // === EVENTS: Stuur gasten naar faciliteiten ===
+                    // === US3.1 CHECK-IN/CHECK-OUT TESTS ===
                     int timestep = simulator.getClock().getTimestep();
 
-                    // EVENT 1: Alice gaat naar Restaurant (na 2.5 sec = 50 ticks)
+                    // US3.1 SCENARIO 1: CHECK-IN - Alice incheckt in Luxe kamer (na 2.5 sec = 50 ticks)
                     if (timestep == 50) {
-                        System.out.println("\n🎬 EVENT 1 TRIGGERED! Alice gaat naar Restaurant!");
-                        simulator.gastNaarFaciliteit("Alice", "Restaurant");
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 1: SUCCESVOL INCHECKEN - Alice");
+                        System.out.println("Given: Alice arriveert met verzoek voor Luxe kamer");
+                        System.out.println("When: simulator.gastCheckin('Alice', 'Luxe') wordt aangeroepen");
+                        System.out.println("=".repeat(80));
+                        boolean succes1 = simulator.gastCheckin("Alice", "Luxe");
+                        if (succes1) {
+                            System.out.println("PASS: Alice is ingecheckt in Luxe kamer - status BEZET");
+                        }
                     }
 
-                    // EVENT 2: Bob gaat naar Fitness (na 7.5 sec = 150 ticks)
+                    // US3.1 SCENARIO 1: CHECK-IN - Bob incheckt in Luxe kamer (na 5 sec = 100 ticks)
+                    if (timestep == 100) {
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 1: SUCCESVOL INCHECKEN - Bob");
+                        System.out.println("Given: Bob arriveert met verzoek voor Luxe kamer");
+                        System.out.println("When: simulator.gastCheckin('Bob', 'Luxe') wordt aangeroepen");
+                        System.out.println("=".repeat(80));
+                        boolean succes2 = simulator.gastCheckin("Bob", "Luxe");
+                        if (succes2) {
+                            System.out.println("PASS: Bob is ingecheckt in Luxe kamer - status BEZET");
+                        }
+                    }
+
+                    // US3.1 SCENARIO 1: CHECK-IN - Charlie incheckt in Standaard kamer (na 7.5 sec = 150 ticks)
                     if (timestep == 150) {
-                        System.out.println("\n🎬 EVENT 2 TRIGGERED! Bob gaat naar Fitness!");
-                        simulator.gastNaarFaciliteit("Bob", "Fitness");
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 1: SUCCESVOL INCHECKEN - Charlie");
+                        System.out.println("Given: Charlie arriveert met verzoek voor Standaard kamer");
+                        System.out.println("When: simulator.gastCheckin('Charlie', 'Standaard') wordt aangeroepen");
+                        System.out.println("=".repeat(80));
+                        boolean succes3 = simulator.gastCheckin("Charlie", "Standaard");
+                        if (succes3) {
+                            System.out.println("PASS: Charlie is ingecheckt in Standaard kamer - status BEZET");
+                        }
                     }
 
-                    // EVENT 3: Charlie gaat naar Lounge (na 12.5 sec = 250 ticks)
+                    // US3.1 SCENARIO 2: CHECK-OUT - Alice verlaat hotel (na 10 sec = 200 ticks)
+                    if (timestep == 200) {
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 2: CHECKOUT & VERLAAT HOTEL - Alice");
+                        System.out.println("Given: Alice verblijft in kamer");
+                        System.out.println("When: simulator.gastCheckout('Alice') wordt aangeroepen");
+                        System.out.println("Then:");
+                        System.out.println("  - Alice verlaat het hotel (verwijderd uit simulatie)");
+                        System.out.println("  - Kamerstatus gemarkeerd als VIES (SCHOONMAKEN)");
+                        System.out.println("=".repeat(80));
+                        simulator.gastCheckout("Alice");
+                        System.out.println("PASS: Alice verlaten hotel succesvol");
+                    }
+
+                    // US3.1 SCENARIO 2: CHECK-OUT - Bob verlaat hotel (na 12.5 sec = 250 ticks)
                     if (timestep == 250) {
-                        System.out.println("\n🎬 EVENT 3 TRIGGERED! Charlie gaat naar Lounge!");
-                        simulator.gastNaarFaciliteit("Charlie", "Lounge");
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 2: CHECKOUT & VERLAAT HOTEL - Bob");
+                        System.out.println("Given: Bob verblijft in kamer");
+                        System.out.println("When: simulator.gastCheckout('Bob') wordt aangeroepen");
+                        System.out.println("Then:");
+                        System.out.println("  - Bob verlaat het hotel (verwijderd uit simulatie)");
+                        System.out.println("  - Kamerstatus gemarkeerd als VIES (SCHOONMAKEN)");
+                        System.out.println("=".repeat(80));
+                        simulator.gastCheckout("Bob");
+                        System.out.println("PASS: Bob verlaten hotel succesvol");
+                    }
+
+                    // US3.1 SCENARIO 2: CHECK-OUT - Charlie verlaat hotel (na 15 sec = 300 ticks)
+                    if (timestep == 300) {
+                        System.out.println("\n" + "=".repeat(80));
+                        System.out.println("[US3.1 SCENARIO 2: CHECKOUT & VERLAAT HOTEL - Charlie");
+                        System.out.println("=".repeat(80));
+                        simulator.gastCheckout("Charlie");
+                        System.out.println("PASS: Charlie verlaten hotel succesvol");
                     }
                 });
                 simulationTimer.start(); // De timer begint met 'lopen' op de achtergrond.
@@ -235,29 +294,31 @@ public class main {
     }
 
     /**
-     * addTestGuests:
-     * Omdat we nog geen reserveringssysteem hebben, voegen we handmatig
-     * drie Gast-objecten toe aan de lijst met personen in het Hotel.
+     * US3.1: addTestGuests - Gasten met Check-in mogelijkheid
+     * De gasten worden geïnitialiseerd en kunnen via simulator.gastCheckin() ingecheckt worden.
+     * Scenario 1: Succesvol inchecken van gasten bij aankomst
+     * Scenario 2: Gast checkt uit en verlaat het hotel
      */
     private static void addTestGuests(Hotel hotel) {
-        // Maak Alice aan op positie (2,6) - Restaurant verdieping
+        // === SCENARIO 1: Alice - Kan in Luxe kamer inchecken ===
         Gast gast1 = new Gast("Alice", 2, 6);
         gast1.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast1.setHotel(hotel);  // Geef gast de hotel areas
-        // OPMERKING: Alice incheckt niet in kamer, want ze is op verdieping 6 (Restaurant)
         hotel.addPersoon(gast1);
 
-        // Doe hetzelfde voor Bob op (3,6)
+        // === SCENARIO 1: Bob - Kan ook in Luxe kamer inchecken ===
         Gast gast2 = new Gast("Bob", 3, 6);
         gast2.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast2.setHotel(hotel);
         hotel.addPersoon(gast2);
 
-        // Charlie op (1,7) - Lounge verdieping
+        // === SCENARIO 2: Charlie - Zal inchecken en later uitchecken ===
         Gast gast3 = new Gast("Charlie", 1, 7);
         gast3.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
         gast3.setHotel(hotel);
         hotel.addPersoon(gast3);
+        
+        System.out.println("[US3.1] ✅ Gasten aangemaakt (initialisatie klaar voor check-in/check-out tests)");
     }
 
     /**

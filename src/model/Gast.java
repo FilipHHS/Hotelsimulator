@@ -257,24 +257,62 @@ public class Gast extends Persoon {
     public Color getKleur() { return kleur; }
     public boolean isInLift() { return inLift; }
 
+    /**
+     * US3.1 Scenario 1: Succesvol inchecken van een gast bij aankomst
+     * - Gast wordt gekoppeld aan een vrije kamer van het gevraagde type
+     * - Kamerstatus verandert naar "BEZET"
+     * - Gast verplaatst zich naar de kamer (visualisatie)
+     */
     public boolean checkinKamer(Kamer kamer) {
+        // Controleer of kamer beschikbaar is
         if (kamer == null || kamer.getStatus() != Kamer.KamerStatus.VRIJ) {
+            System.out.println("❌ [US3.1] " + getNaam() + " kon niet inchecken - kamer niet vrij!");
             return false;
         }
+        
+        // Koppel gast aan kamer
         this.huidigKamer = kamer;
         kamer.setStatus(Kamer.KamerStatus.BEZET);
+        
+        // Verplaats gast naar kamer positie (visualisatie)
+        if (kamer.getArea() != null) {
+            this.x = kamer.getArea().getX() + kamer.getArea().getBreedte() / 2.0;
+            this.y = kamer.getArea().getY() + 0.5;
+        }
+        
+        System.out.println("✅ [US3.1 Scenario 1] " + getNaam() + " is ingecheckt in kamer " + kamer.getKamernummer());
         return true;
     }
 
+    /**
+     * US3.1 Scenario 2: Gast verlaat het hotel en laat de kamer vies achter
+     * - Status van kamer verandert naar "SCHOONMAKEN" (vies)
+     * - Gast wordt verwijderd uit de simulatie (via Simulator.gastCheckout())
+     */
     public void checkoutKamer() {
         if (huidigKamer != null) {
+            // Markeer kamer als vies
             huidigKamer.setStatus(Kamer.KamerStatus.SCHOONMAKEN);
+            System.out.println("[US3.1 Scenario 2] " + getNaam() + " heeft kamer " + 
+                              huidigKamer.getKamernummer() + " verlaten. Kamer is nu VIES.");
             this.huidigKamer = null;
+        } else {
+            System.out.println("[US3.1] " + getNaam() + " probeerde uit te checken maar zat niet in een kamer.");
         }
     }
 
+    /**
+     * US3.1 Helper: Geef terug in welke kamer de gast verblijft
+     */
     public Kamer getHuidigKamer() {
         return huidigKamer;
+    }
+
+    /**
+     * US3.1 Helper: Check of gast is ingecheckt
+     */
+    public boolean isIngecheckt() {
+        return huidigKamer != null;
     }
 
     public void gaatNaarFaciliteit(String faciliteitsType) {
