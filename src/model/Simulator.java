@@ -1,251 +1,123 @@
 package model;
 
-import model.SimulationClock;
-import model.HTEClock;
 import model.TickListener;
-import model.Persoon;
 import ui.HotelPanel;
+import java.util.List;
 
-/**
- * Simulator - Stuurt de simulatie aan via HTE-ticks
- * Beheert lift en alle gasten
- */
 public class Simulator {
-
-    private boolean running;
-    private HotelPanel hotelPanel;
+    private boolean running = false;
     private Hotel hotel;
+    private HotelPanel hotelPanel;
     private SimulationClock clock;
     private HTEClock hteClock;
-    private Lift lift;             // De lift object
-
-    private static final long TICK_INTERVAL = 100; // 100 ms
+    private Lift lift;
 
     public Simulator(Hotel hotel, HotelPanel hotelPanel) {
         this.hotel = hotel;
         this.hotelPanel = hotelPanel;
-        this.running = false;
-        this.clock = new SimulationClock(TICK_INTERVAL);
+        this.clock = new SimulationClock(100);
         this.hteClock = new HTEClock();
 
-        // === INITIALISEER LIFT ===
-        // Zoek de Schacht area (waar lift beweegt)
-        Area schachtArea = null;
-        for (Area area : hotel.getAreas()) {
-            if (area.getAreaType().equals("Schacht")) {
-                schachtArea = area;
-                break;
-            }
-        }
-
-        if (schachtArea != null) {
-            // Maak lift aan in schacht
-            // X = schacht X-coördinaat + 0.5 (midden van vakje)
-            // Y start op eerste verdieping
-            double liftX = (schachtArea.getX() - 1) + 0.5;
-            double liftY = (schachtArea.getY() - 1) + 0.5;
-            int minY = schachtArea.getY() - 1;
-            int maxY = schachtArea.getY() + schachtArea.getHoogte() - 2;
-
-            this.lift = new Lift(liftX, liftY, minY, maxY);
-            System.out.println("[Simulator] Lift geïnitialiseerd op positie (" + liftX + ", " + liftY + ")");
-        } else {
-            System.out.println("[Simulator] WAARSCHUWING: Geen Schacht gevonden!");
-        }
-
-        // Registreer lift als listener
-        if (lift != null) {
-            hteClock.addListener(lift);
-        }
-
-        // === REGISTREER ALLE GASTEN EN KOP LIFT AAN ===
-        for (Persoon p : hotel.getPersonen()) {
-            // Registreer als listener op HTEClock
-            if (p instanceof TickListener) {
-                hteClock.addListener((TickListener) p);
-            }
-
-            // Als het een Gast is: geef hem een referentie naar de lift
-            if (p instanceof Gast && lift != null) {
-                ((Gast) p).setLift(lift);
-                System.out.println("[Simulator] Gast '" + p.getNaam() + "' heeft lift-referentie gekregen");
-            }
-
-            // Als het een Schoonmaker is: geef hem ook lift-referentie
-            if (p instanceof Schoonmaker && lift != null) {
-                ((Schoonmaker) p).setLift(lift);
-                System.out.println("[Simulator] Schoonmaker '" + p.getNaam() + "' heeft lift-referentie gekregen");
-            }
-        }
+        initialiseerLift();
+        initialiseerPersonen();
     }
 
-    public void start() {
-        running = true;
-        clock.start();
-        hotelPanel.setRunning(true);
-        System.out.println("[Simulator] Simulatie gestart");
-    }
+    private void initialiseerLift() {
+        for (Area a : hotel.getAreas()) {
+            String type = a.getAreaType();
+            if (type != null && (type.equalsIgnoreCase("Schacht") ||
+                    type.equalsIgnoreCase("Lift") ||
+                    type.equalsIgnoreCase("Elevator"))) {
 
-    public void pause() {
-        running = false;
-        clock.stop();
-        hotelPanel.setRunning(false);
-        System.out.println("[Simulator] Simulatie gepauzeerd");
-    }
+                double liftX = (a.getX() - 1) + 0.5;
+                double liftY = (a.getY() + a.getHoogte() - 2) + 0.5;
+                int minY = a.getY() - 1;
+                int maxY = a.getY() + a.getHoogte() - 2;
 
-    public boolean isRunning() {
-        return running;
-    }
+                this.lift = new Lift(liftX, liftY, minY, maxY);
+                hteClock.addListener(this.lift);
 
-    public SimulationClock getClock() {
-        return clock;
-    }
-
-    public HTEClock getHteClock() {
-        return hteClock;
-    }
-
-    public Lift getLift() {
-        return lift;
-    }
-
-    public void resetClock() {
-        clock.reset();
-        hteClock = new HTEClock();
-
-        if (lift != null) {
-            hteClock.addListener(lift);
-        }
-
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof TickListener) {
-                hteClock.addListener((TickListener) p);
-            }
-        }
-    }
-
-    /**
-     * HOOFDMETHODE: Wordt aangeroepen door Timer in main
-     * Dit triggert HTE-ticks als timing klopt
-     */
-    public void tick() {
-
-        // Check of er een echte HTE-tick plaatsvindt
-        if (running && clock.tick()) {
-            System.out.println("[Simulator] HTE-tick #" + clock.getTimestep() + " | Lift Y: " + (lift != null ? String.format("%.1f", lift.getY()) : "N/A"));
-
-            // Roep HTEClock.tick() aan (die roept alle listeners.onTick() aan)
-            // Dit includes: Lift + Gasten + Schoonmakers
-            hteClock.tick();
-
-            // === NIEUW: US3.7 Posities synchroniseren in het grid ===
-            // Na de beweging slaan we de nieuwe posities op in het Hotel
-            for (Persoon p : hotel.getPersonen()) {
-                int gridX = 0;
-                int gridY = 0;
-
-                // We zetten de 'double' positie om naar een 'int' voor het grid vakje
-                if (p instanceof Gast) {
-                    gridX = (int) ((Gast) p).getX();
-                    gridY = (int) ((Gast) p).getY();
-                } else if (p instanceof Schoonmaker) {
-                    gridX = (int) ((Schoonmaker) p).getX();
-                    gridY = (int) ((Schoonmaker) p).getY();
-                }
-
-                // Werk het administratieve grid bij in het hotel object
-                hotel.updatePersoonPositie(p, gridX, gridY);
-            }
-            // === EINDE NIEUW ===
-        }
-
-        // UI altijd updaten (ook bij pauze voor soepele rendering)
-        hotelPanel.repaint();
-    }
-
-    /**
-     * US3.1 Scenario 1: Gast inchecken in een vrije kamer
-     * - Zoek vrije kamer van gewenst type
-     * - Roep checkinKamer() aan op de gast
-     * 
-     * Acceptatiecriterium:
-     * - Gast wordt gekoppeld aan kamer van gevraagde type
-     * - Kamerstatus verandert naar "BEZET"
-     */
-    public boolean gastCheckin(String gastNaam, String kamerType) {
-        // Zoek de gast
-        Gast targetGast = null;
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
-                targetGast = (Gast) p;
-                break;
-            }
-        }
-        
-        if (targetGast == null) {
-            System.out.println(" [US3.1] Gast '" + gastNaam + "' niet gevonden!");
-            return false;
-        }
-        
-        // Zoek vrije kamer van gewenst type
-        Kamer vrijeKamer = hotel.zoekVrijeKamer(kamerType);
-        if (vrijeKamer == null) {
-            System.out.println(" [US3.1] Geen vrije " + kamerType + " kamer beschikbaar!");
-            return false;
-        }
-        
-        // Check in
-        boolean succes = targetGast.checkinKamer(vrijeKamer);
-        if (succes) {
-            System.out.println(" [US3.1] " + gastNaam + " is ingecheckt in kamer " + vrijeKamer.getKamernummer());
-        }
-        return succes;
-    }
-
-    /**
-     * US3.1 Scenario 2: Gast uitchecken en verwijderen uit simulatie
-     * - Checkout kamer (status → SCHOONMAKEN/VIES)
-     * - Verwijder gast uit simulatie (verlaat hotel)
-     * 
-     * Acceptatiecriterium:
-     * - Gast verlaat het hotel (verwijderd uit simulatie)
-     * - Kamerstatus gemarkeerd als "Vies" (SCHOONMAKEN)
-     */
-    public void gastCheckout(String gastNaam) {
-        // Zoek de gast
-        Gast targetGast = null;
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
-                targetGast = (Gast) p;
-                break;
-            }
-        }
-        
-        if (targetGast == null) {
-            System.out.println("[US3.1] Gast '" + gastNaam + "' niet gevonden!");
-            return;
-        }
-        
-        // Checkout
-        targetGast.checkoutKamer();
-        
-        // Verwijder uit simulatie
-        hotel.verwijderGast(targetGast);
-        System.out.println("[US3.1 Scenario 2] " + gastNaam + " is volledig uit het hotel vertrokken.");
-    }
-
-    /**
-     * Stuur een gast naar een faciliteit.
-     * Dit kan aangeroepen worden vanuit events of tests.
-     */
-    public void gastNaarFaciliteit(String gastNaam, String faciliteitsType) {
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof Gast && p.getNaam().equals(gastNaam)) {
-                ((Gast) p).gaatNaarFaciliteit(faciliteitsType);
-                System.out.println("[Simulator] Gast '" + gastNaam + "' gestuurd naar " + faciliteitsType);
+                System.out.println("[Simulator] Lift succesvol geïnitialiseerd.");
                 return;
             }
         }
-        System.out.println("[Simulator] Gast '" + gastNaam + "' niet gevonden!");
+    }
+
+    private void initialiseerPersonen() {
+        Area lobbyArea = hotel.getAreas().stream()
+                .filter(a -> a.getAreaType() != null && a.getAreaType().equalsIgnoreCase("Lobby"))
+                .findFirst().orElse(null);
+
+        Area opslagArea = hotel.getAreas().stream()
+                .filter(a -> a.getAreaType() != null && (a.getAreaType().equalsIgnoreCase("Storage") || a.getAreaType().equalsIgnoreCase("Opslag")))
+                .findFirst().orElse(null);
+
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof TickListener) {
+                hteClock.addListener((TickListener) p);
+            }
+
+            // --- GAST INITIALISATIE ---
+            if (p instanceof Gast) {
+                Gast g = (Gast) p;
+                g.setLift(lift);
+                g.setHotel(hotel);
+                g.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+
+                if (lobbyArea != null) {
+                    // CORRECTIE: lobbyArea.getY() - 1 zorgt dat ze één vakje hoger spawnen
+                    double startX = lobbyArea.getX() + 0.5;
+                    double startY = (lobbyArea.getY() - 1) + 0.5;
+                    g.setStartPositie(startX, startY);
+                }
+            }
+
+            // --- SCHOONMAKER INITIALISATIE ---
+            if (p instanceof Schoonmaker) {
+                Schoonmaker s = (Schoonmaker) p;
+                s.setLift(lift);
+                s.setHotel(hotel);
+                s.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+
+                if (opslagArea != null) {
+                    // Als de schoonmakers ook te laag staan, doe hier ook - 1
+                    double startX = opslagArea.getX() + 0.5;
+                    double startY = (opslagArea.getY() - 1) + 0.5;
+                    s.setStartPositie(startX, startY);
+                }
+            }
+        }
+    }
+
+    public void tick() {
+        if (running && clock.tick()) {
+            hteClock.tick();
+        }
+        hotelPanel.repaint();
+    }
+
+    public void start() { this.running = true; clock.start(); }
+    public void pause() { this.running = false; clock.stop(); }
+    public boolean isRunning() { return running; }
+    public SimulationClock getClock() { return clock; }
+    public Lift getLift() { return lift; }
+    public void resetClock() { this.clock.reset(); }
+
+    public boolean gastCheckin(String naam, String type) {
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof Gast && p.getNaam().equals(naam)) {
+                Kamer k = hotel.zoekVrijeKamer(type);
+                if (k != null) return ((Gast) p).checkinKamer(k);
+            }
+        }
+        return false;
+    }
+
+    public void gastCheckout(String naam) {
+        for (Persoon p : hotel.getPersonen()) {
+            if (p instanceof Gast && p.getNaam().equals(naam)) {
+                ((Gast) p).checkoutKamer();
+            }
+        }
     }
 }
