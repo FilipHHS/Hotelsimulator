@@ -18,6 +18,7 @@ public class Gast extends Persoon {
     private Color kleur;
 
     private int doelVerdieping;
+    private int roomStayTimer = 0;  // Timer for how long guest stays in room
 
     private double faciliteitX, faciliteitY;
     private int faciliteitsBezoekDuur = 0; // Let op de 'l'
@@ -31,6 +32,7 @@ public class Gast extends Persoon {
         GAAT_NAAR_FACILITEIT,
         IN_FACILITEIT,
         GAAT_NAAR_LOBBY,
+        GAAT_NAAR_KAMER,
         VERLAAT_HOTEL
     }
 
@@ -43,6 +45,7 @@ public class Gast extends Persoon {
         this.kleur = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
     }
 
+
     @Override
     public void onTick() {
         if (!inLift) {
@@ -52,6 +55,7 @@ public class Gast extends Persoon {
                 case WACHTEN_OP_VERVOER: wachtOpVervoer(); break;
                 case GAAT_NAAR_FACILITEIT: beweegNaarFaciliteit(); break;
                 case IN_FACILITEIT: zitInFaciliteit(); break;
+                case GAAT_NAAR_KAMER: beweegNaarKamer(); break;
                 case GAAT_NAAR_LOBBY: beweegNaarLobby(); break;
                 case VERLAAT_HOTEL: beweegNaarExit(); break;
             }
@@ -76,9 +80,26 @@ public class Gast extends Persoon {
     }
 
     private void randomWalk() {
+        // If guest just arrived in room, don't move - stay there
+        if (roomStayTimer > 0) {
+            roomStayTimer--;
+            destX = x;  // Stay in place
+            if (roomStayTimer == 0) {
+                // Timer done - maybe visit a facility
+                if (RANDOM.nextDouble() < 0.5) {
+                    // 50% chance to visit restaurant or fitness
+                    String facility = RANDOM.nextBoolean() ? "Restaurant" : "Fitness";
+                    // For now, just reset and start wandering
+                    // TODO: Add facility visit logic here
+                }
+            }
+            return;
+        }
+
         if (stapsInRichting >= maxStapsRichting) {
             int keuze = RANDOM.nextInt(10);
-            if (keuze < 4) destX = Math.max(1.5, x - 3);
+            // FIX: Guests should NOT wander out of bounds (x < 0). Only stay inside hotel.
+            if (keuze < 4) destX = Math.max(0.5, x - 3);
             else if (keuze < 8) destX = Math.min(maxX - 1.5, x + 3);
             else destX = x;
             stapsInRichting = 0;
@@ -149,6 +170,25 @@ public class Gast extends Persoon {
         }
     }
 
+    private void beweegNaarKamer() {
+        // Check if we need to change floors
+        if ((int)y != doelVerdieping) {
+            wiltVerdiepingWisselen();
+        } else {
+            // On the correct floor, move to room X
+            double dx = destX - x;
+            if (Math.abs(dx) < SPEED) {
+                x = destX;
+                this.y = doelVerdieping + 0.5;
+                this.state = State.WANDELEN;
+                // Guest arrived in room - set timer to stay there
+                this.roomStayTimer = 100 + RANDOM.nextInt(200);  // Stay 100-300 ticks
+            } else {
+                x += (dx > 0) ? SPEED : -SPEED;
+            }
+        }
+    }
+
     private void zitInFaciliteit() {
         faciliteitsBezoekDuur--; // Gefixt
         if (faciliteitsBezoekDuur <= 0) {
@@ -187,9 +227,10 @@ public class Gast extends Persoon {
     public boolean checkinKamer(Kamer k) {
         this.huidigKamer = k;
         k.setStatus(Kamer.KamerStatus.BEZET);
-        this.x = k.getArea().getX() + 0.5;
-        this.y = k.getArea().getY() + 0.5;
-        this.destX = this.x;
+        // Don't teleport! Set destination and change state to walk there
+        this.destX = k.getArea().getX() + 0.5;
+        this.state = State.GAAT_NAAR_KAMER;
+        this.doelVerdieping = (int)k.getArea().getY();
         return true;
     }
 
@@ -204,8 +245,6 @@ public class Gast extends Persoon {
      * Wordt aangeroepen door de lift om de positie van de gast te synchroniseren
      * terwijl deze in de lift staat.
      */
-    public void setLiftPosition(double lx, double ly) {
-        this.x = lx;
-        this.y = ly;
-    }
+
+
 }
