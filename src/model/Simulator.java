@@ -3,6 +3,9 @@ package model;
 import model.TickListener;
 import ui.HotelPanel;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Simulator {
     private boolean running = false;
@@ -11,6 +14,9 @@ public class Simulator {
     private SimulationClock clock;
     private HTEClock hteClock;
     private Lift lift;
+    private Area lobbyArea;
+    private int lastGuestSpawnTime = 0;
+    private Map<String, Integer> guestCheckInTime = new HashMap<>();  // Track check-in times
 
     public Simulator(Hotel hotel, HotelPanel hotelPanel) {
         this.hotel = hotel;
@@ -52,6 +58,9 @@ public class Simulator {
                 .filter(a -> a.getAreaType() != null && (a.getAreaType().equalsIgnoreCase("Storage") || a.getAreaType().equalsIgnoreCase("Opslag")))
                 .findFirst().orElse(null);
 
+        // Store lobby reference for dynamic spawning
+        this.lobbyArea = lobbyArea;
+
         for (Persoon p : hotel.getPersonen()) {
             if (p instanceof TickListener) {
                 hteClock.addListener((TickListener) p);
@@ -65,8 +74,8 @@ public class Simulator {
                 g.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
 
                 if (lobbyArea != null) {
-                    // CORRECTIE: lobbyArea.getY() - 1 zorgt dat ze één vakje hoger spawnen
-                    double startX = lobbyArea.getX() + 0.5;
+                    // Spawn at x = -1.0 outside the hotel
+                    double startX = -1.0;
                     double startY = (lobbyArea.getY() - 1) + 0.5;
                     g.setStartPositie(startX, startY);
                 }
@@ -80,9 +89,9 @@ public class Simulator {
                 s.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
 
                 if (opslagArea != null) {
-                    // Als de schoonmakers ook te laag staan, doe hier ook - 1
-                    double startX = opslagArea.getX() + 0.5;
-                    double startY = (opslagArea.getY() - 1) + 0.5;
+                    // Keep cleaners in storage (1 grid linksboven van opslag: Position 7, 5)
+                    double startX = opslagArea.getX() - 0.5;
+                    double startY = opslagArea.getY() - 0.5;
                     s.setStartPositie(startX, startY);
                 }
             }
@@ -92,8 +101,102 @@ public class Simulator {
     public void tick() {
         if (running && clock.tick()) {
             hteClock.tick();
+            
+            // Remove guests that have left the hotel (x < -1)
+            hotel.getPersonen().removeIf(p -> p instanceof Gast && p.getX() < -1.0);
+            
+            // Auto-check in waiting guests
+            autoCheckInGuests();
+            
+            // Auto-checkout guests after 300 ticks in room
+            autoCheckoutGuests();
+            
+            // Periodically spawn new guests (every 100 ticks instead of 200)
+            lastGuestSpawnTime++;
+            if (lastGuestSpawnTime >= 100 && hasAvailableRoom()) {
+                spawnNewGuest();
+                lastGuestSpawnTime = 0;
+            }
         }
         hotelPanel.repaint();
+    }
+    
+    private void autoCheckInGuests() {
+        try {
+            for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
+                if (p instanceof Gast) {
+                    Gast gast = (Gast) p;
+                    // If guest is in lobby and not checked in yet
+                    if (gast.getHuidigKamer() == null && (int)gast.getY() == 6 && gast.getX() > 1.0) {
+                        // Try to check in to available room
+                        Kamer k = hotel.zoekVrijeKamer("Luxe");
+                        if (k == null) k = hotel.zoekVrijeKamer("Standaard");
+                        if (k == null) k = hotel.zoekVrijeKamer("Budget");
+                        
+                        if (k != null) {
+                            gast.checkinKamer(k);
+                            guestCheckInTime.put(gast.getNaam(), 0);  // Start timer
+                            System.out.println("[AUTO-CHECKIN] " + gast.getNaam() + " checked in to room " + k.getKamernummer());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[autoCheckInGuests] Error: " + e.getMessage());
+        }
+    }
+    
+    private void autoCheckoutGuests() {
+        try {
+            for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
+                if (p instanceof Gast) {
+                    Gast gast = (Gast) p;
+                    if (gast.getHuidigKamer() != null && guestCheckInTime.containsKey(gast.getNaam())) {
+                        // Increment stay time
+                        int stayTime = guestCheckInTime.get(gast.getNaam());
+                        stayTime++;
+                        guestCheckInTime.put(gast.getNaam(), stayTime);
+                        
+                        // Auto-checkout after 300 ticks
+                        if (stayTime >= 300) {
+                            gast.checkoutKamer();
+                            guestCheckInTime.remove(gast.getNaam());
+                            System.out.println("[AUTO-CHECKOUT] " + gast.getNaam() + " checked out");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[autoCheckoutGuests] Error: " + e.getMessage());
+        }
+    }
+    
+    private boolean hasAvailableRoom() {
+        for (Kamer k : hotel.getKamers()) {
+            if (k.getStatus() == Kamer.KamerStatus.VRIJ) return true;
+        }
+        return false;
+    }
+    
+    private void spawnNewGuest() {
+        if (lobbyArea == null) return;
+        
+        String[] firstNames = {"Emma", "Liam", "Olivia", "Noah", "Ava", "Elijah", "Sophia", "Mason"};
+        String[] types = {"Luxe", "Standaard", "Budget"};
+        
+        String name = firstNames[(int)(Math.random() * firstNames.length)];
+        String type = types[(int)(Math.random() * types.length)];
+        
+        Gast newGuest = new Gast(name, -1, 0);
+        newGuest.setLift(lift);
+        newGuest.setHotel(hotel);
+        newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        newGuest.setStartPositie(-1.0, (lobbyArea.getY() - 1) + 0.5);
+        
+        hteClock.addListener(newGuest);
+        hotel.addPersoon(newGuest);
+        
+        System.out.println("[Simulator] Nieuwe gast '" + name + "' komt aan (kamertype: " + type + ")");
     }
 
     public void start() { this.running = true; clock.start(); }

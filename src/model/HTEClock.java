@@ -4,19 +4,22 @@ import model.TickListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 // De centrale klok van de simulatie
 public class HTEClock {
 
-    // Lijst met alle objecten die moeten reageren op ticks
-    private final List<TickListener> listeners = new ArrayList<>();
+    // Gebruik CopyOnWriteArrayList om ConcurrentModificationException te voorkomen
+    private final List<TickListener> listeners = new CopyOnWriteArrayList<>();
 
     // Houdt bij hoeveel ticks er zijn geweest
-    private int tickCount = 0;
+    private long tickCount = 0;  // Changed to long to prevent integer overflow
 
     // Voeg een entiteit toe aan de klok
     public void addListener(TickListener listener) {
-        listeners.add(listener);
+        if (listener != null) {
+            listeners.add(listener);
+        }
     }
 
     // Verwijder een entiteit (optioneel)
@@ -28,14 +31,26 @@ public class HTEClock {
     public void tick() {
         tickCount++;
 
-        // Debug output (handig tijdens testen)
-        System.out.println("====== HTEClock TICK #" + tickCount + " ======");
+        // Debug output (handig tijdens testen) - less verbose
+        if (tickCount % 100 == 0) {  // Only print every 100 ticks to reduce console spam
+            System.out.println("====== HTEClock TICK #" + tickCount + " (Listeners: " + listeners.size() + ") ======");
+        }
 
         // BELANGRIJK:
         // Alle entiteiten reageren hier tegelijk op dezelfde tick
-        for (TickListener listener : listeners) {
-            listener.onTick();
+        try {
+            for (TickListener listener : listeners) {
+                if (listener != null) {
+                    listener.onTick();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[HTEClock] Error during tick #" + tickCount + ": " + e.getMessage());
+            e.printStackTrace();
         }
-        System.out.println("====== Einde TICK #" + tickCount + " ======\n");
+        
+        if (tickCount % 100 == 0) {
+            System.out.println("====== Einde TICK #" + tickCount + " ======\n");
+        }
     }
 }

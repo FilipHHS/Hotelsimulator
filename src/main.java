@@ -86,21 +86,15 @@ public class main {
     private static void runTick() {
         if (simulator == null || !simulator.isRunning()) return;
 
-        // 1. Voer de tick uit in de simulator
-        // Deze methode moet in Simulator.java de hteClock.tick() aanroepen
+        // Voer de simulator tick uit
         simulator.tick();
 
-        // 2. Update de UI labels
+        // Update de UI labels
         int timestep = simulator.getClock().getTimestep();
         timestepLabel.setText("Timestep: " + timestep);
 
-        // 3. Test scenario's uitvoeren op basis van HTE-tijd
-        if (timestep == 50) simulator.gastCheckin("Alice", "Luxe");
-        if (timestep == 100) simulator.gastCheckin("Bob", "Luxe");
-        if (timestep == 150) simulator.gastCheckin("Charlie", "Standaard");
-        if (timestep == 200) simulator.gastCheckout("Alice");
-        if (timestep == 250) simulator.gastCheckout("Bob");
-        if (timestep == 300) simulator.gastCheckout("Charlie");
+        // Optional: Manual test scenarios (most are now automatic)
+        // Auto-checkin and auto-checkout are handled in Simulator now
     }
 
     private static void toggleSimulation() {
@@ -153,12 +147,12 @@ public class main {
     }
 
     private static void addTestGuests(Hotel hotel) {
-        String[] namen = {"Alice", "Bob", "Charlie"};
-        double[][] pos = {{2, 6}, {3, 6}, {1, 7}};
-
+        // Add more initial test guests - they will spawn at x = -1.0
+        String[] namen = {"Alice", "Bob", "Charlie", "Diana", "Frank", "Grace"};
         for (int i = 0; i < namen.length; i++) {
-            Gast g = new Gast(namen[i], (int)pos[i][0], (int)pos[i][1]);
+            Gast g = new Gast(namen[i], -1, 0);
             g.setHotel(hotel);
+            g.setStartPositie(-1.0, 6.5); // Spawn outside at lobby level
             hotel.addPersoon(g);
         }
     }

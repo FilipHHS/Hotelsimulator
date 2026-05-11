@@ -14,6 +14,7 @@ public class Schoonmaker extends Persoon {
     private Kamer huidigKamer;
     private int schoonmaakTimer = 0;
     private boolean inLift = false;
+    private int doelVerdieping;
 
     private enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT }
     private State state = State.VRIJ;
@@ -21,37 +22,84 @@ public class Schoonmaker extends Persoon {
     public Schoonmaker(String naam, int startX, int startY) {
         super(naam, "Schoonmaker");
 
-        // FORCEER STARTPOSITIE NAAR OPSLAG (Vakje 8, 6 uit je JSON)
+        // FORCEER STARTPOSITIE NAAR OPSLAG (1 grid linksboven van Position 8,6 = Position 7,5)
         // We negeren startX en startY die vanuit de simulator komen.
-        this.x = 8.5;
-        this.y = 6.5;
+        this.x = 7.5;
+        this.y = 5.5;
 
-        System.out.println("[Schoonmaker] " + naam + " is in de Opslag (8,6)");
+        System.out.println("[Schoonmaker] " + naam + " is in de Opslag (7,5)");
     }
 
     @Override
     public void onTick() {
+        // Update activiteit label
+        updateActiviteitLabel();
+        
         if (inLift) {
             handleLiftMovement();
             return;
         }
 
-        // 1. Zoek werk
+        // ... existing code...
         Kamer viezeKamer = zoekViezeKamer();
 
-        // 2. Bepaal doelpositie (Kamer of Opslag 8.5, 6.5)
-        double targetX = (viezeKamer != null) ? viezeKamer.getArea().getX() + 0.5 : 8.5;
-        double targetY = (viezeKamer != null) ? viezeKamer.getArea().getY() + 0.5 : 6.5;
+        if (viezeKamer == null) {
+            if (state == State.NAAR_DOEL) {
+                state = State.VRIJ;
+                huidigKamer = null;
+            }
+            
+            if (Math.abs(x - 7.5) > 0.1) {
+                x += (x < 7.5) ? SPEED : -SPEED;
+            } else if (Math.abs(y - 5.5) > 0.1) {
+                y += (y < 5.5) ? SPEED : -SPEED;
+            } else {
+                state = State.VRIJ;
+            }
+            return;
+        }
 
-        // 3. Voer actie uit op basis van lokatie
+        double targetX = viezeKamer.getArea().getX() + 0.5;
+        double targetY = viezeKamer.getArea().getY() + 0.5;
+
         if (state == State.SCHOONMAKEN) {
             werkAanKamer();
         } else {
             beweeg(targetX, targetY, viezeKamer);
         }
     }
+    
+    private void updateActiviteitLabel() {
+        if (inLift) {
+            setHuidigeActiviteit("🛗 In Lift");
+        } else {
+            switch (state) {
+                case VRIJ:
+                    setHuidigeActiviteit("⏳ Idle");
+                    break;
+                case NAAR_DOEL:
+                    setHuidigeActiviteit("🚶 Naar Kamer");
+                    break;
+                case SCHOONMAKEN:
+                    setHuidigeActiviteit("🧹 Schoon");
+                    break;
+                case IN_LIFT:
+                    setHuidigeActiviteit("🛗 In Lift");
+                    break;
+                default:
+                    setHuidigeActiviteit("");
+            }
+        }
+    }
 
     private void beweeg(double tx, double ty, Kamer doelKamer) {
+        // Check: Is the target room still dirty? If not, abort and go back to storage
+        if (doelKamer.getStatus() != Kamer.KamerStatus.SCHOONMAKEN) {
+            state = State.VRIJ;
+            huidigKamer = null;
+            return;  // Abort, go back to storage in next tick
+        }
+        
         // Verdieping check
         if ((int)y != (int)ty) {
             // Ga naar lift
@@ -66,7 +114,7 @@ public class Schoonmaker extends Persoon {
                 x += (x < tx) ? SPEED : -SPEED;
             } else {
                 // Gearriveerd
-                if (doelKamer != null) {
+                if (doelKamer != null && doelKamer.getStatus() == Kamer.KamerStatus.SCHOONMAKEN) {
                     this.huidigKamer = doelKamer;
                     this.state = State.SCHOONMAKEN;
                     this.schoonmaakTimer = SCHOONMAAK_DUUR;
@@ -88,11 +136,11 @@ public class Schoonmaker extends Persoon {
     }
 
     private void stapInLift(int doelVerdieping) {
-        if (lift != null && Math.abs(lift.getY() - y) < 0.2 && lift.isIdle()) {
-            if (lift.voegGastToe(this)) {
+        if (lift != null && Math.abs(lift.getY() - y) < 0.3 && lift.isIdle()) {
+            if (lift.voegGastToe(this, doelVerdieping)) {
                 this.inLift = true;
+                this.doelVerdieping = doelVerdieping;
                 this.state = State.IN_LIFT;
-                lift.roepNaar(doelVerdieping);
             }
         }
     }
@@ -101,13 +149,22 @@ public class Schoonmaker extends Persoon {
         this.x = lift.getX();
         this.y = lift.getY();
 
-        // Ben ik op de verdieping die ik nodig heb?
-        Kamer vKamer = zoekViezeKamer();
-        int ty = (vKamer != null) ? (int)vKamer.getArea().getY() : 6;
-
-        if ((int)y == ty && lift.isIdle()) {
+        // Exit lift when at the correct floor and lift is idle
+        if ((int)lift.getY() == doelVerdieping && lift.isIdle()) {
+            // Double-check: Is there still a dirty room to clean?
+            Kamer viezeKamer = zoekViezeKamer();
+            if (viezeKamer == null) {
+                // No more dirty rooms, abort mission and go back to storage
+                lift.verwijderGast(this);
+                this.inLift = false;
+                this.y = doelVerdieping + 0.5;
+                this.state = State.VRIJ;
+                return;
+            }
+            
             lift.verwijderGast(this);
             this.inLift = false;
+            this.y = doelVerdieping + 0.5;
             this.state = State.NAAR_DOEL;
         }
     }

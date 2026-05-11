@@ -154,10 +154,14 @@ public class HotelPanel extends JPanel {
                 ));
                 g.drawOval(px, py, 16, 16);
 
-                // US4.4: Naam iets duidelijker boven de gast tekenen voor betere volgbaarheid
+                // Naam + activiteit boven de gast
                 g.setColor(Color.BLACK);
-                g.setFont(new Font("Arial", Font.BOLD, 10));
-                g.drawString(gast.getNaam(), px - 5, py - 5);
+                g.setFont(new Font("Arial", Font.BOLD, 9));
+                String label = gast.getNaam();
+                if (!gast.getHuidigeActiviteit().isEmpty()) {
+                    label += " " + gast.getHuidigeActiviteit();
+                }
+                g.drawString(label, px - 5, py - 5);
             } else if (persoon instanceof Schoonmaker) {
                 Schoonmaker schoonmaker = (Schoonmaker) persoon;
                 int px = (int)(schoonmaker.getX() * VAKJE_GROOTTE) + offsetX - 8;
@@ -172,6 +176,14 @@ public class HotelPanel extends JPanel {
                 g.setColor(Color.BLACK);
                 g.setFont(new Font("Arial", Font.BOLD, 10));
                 g.drawString("S", px + 5, py + 8);
+                
+                // Activiteit label voor schoonmaker
+                String label = "CM";
+                if (!schoonmaker.getHuidigeActiviteit().isEmpty()) {
+                    label += " " + schoonmaker.getHuidigeActiviteit();
+                }
+                g.setFont(new Font("Arial", Font.PLAIN, 8));
+                g.drawString(label, px - 5, py - 3);
             }
         }
 
