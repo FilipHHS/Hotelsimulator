@@ -10,6 +10,7 @@ public abstract class Persoon implements TickListener {
     private int id;
     private String naam;
     private String type;
+    protected String huidigeActiviteit = ""; // Wat is de persoon aan het doen?
 
     // 'protected' zodat subclasses (Gast, Schoonmaker) ze kunnen gebruiken
     protected double x;
@@ -54,10 +55,12 @@ public abstract class Persoon implements TickListener {
     public String getType() { return type; }
     public double getX() { return x; }
     public double getY() { return y; }
+    public String getHuidigeActiviteit() { return huidigeActiviteit; }
 
     // Standaard Setters (handig voor algemeen gebruik)
     public void setX(double x) { this.x = x; }
     public void setY(double y) { this.y = y; }
+    public void setHuidigeActiviteit(String activiteit) { this.huidigeActiviteit = activiteit; }
 
     @Override
     public abstract void onTick();

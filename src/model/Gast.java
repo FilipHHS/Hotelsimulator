@@ -48,6 +48,9 @@ public class Gast extends Persoon {
 
     @Override
     public void onTick() {
+        // Update activiteit label
+        updateActiviteitLabel();
+        
         if (!inLift) {
             switch (state) {
                 case WANDELEN: randomWalk(); break;
@@ -63,13 +66,61 @@ public class Gast extends Persoon {
             handleLiftLogic();
         }
     }
+    
+    private void updateActiviteitLabel() {
+        if (inLift) {
+            setHuidigeActiviteit("🛗 In Lift");
+        } else {
+            switch (state) {
+                case WANDELEN:
+                    if (huidigKamer != null) {
+                        setHuidigeActiviteit("🛏️ Chill");
+                    } else {
+                        setHuidigeActiviteit("🚶 Wandel");
+                    }
+                    break;
+                case NAAR_LIFT_WACHTEN:
+                    setHuidigeActiviteit("⏳ Wacht Lift");
+                    break;
+                case WACHTEN_OP_VERVOER:
+                    setHuidigeActiviteit("⏳ Vervoer");
+                    break;
+                case IN_FACILITEIT:
+                    if (huidigerFaciliteitType != null) {
+                        if ("Restaurant".equals(huidigerFaciliteitType)) {
+                            setHuidigeActiviteit("🍽️ Eet");
+                        } else if ("Fitness".equals(huidigerFaciliteitType)) {
+                            setHuidigeActiviteit("💪 Sport");
+                        } else {
+                            setHuidigeActiviteit("📍 " + huidigerFaciliteitType);
+                        }
+                    }
+                    break;
+                case GAAT_NAAR_FACILITEIT:
+                    setHuidigeActiviteit("🚶 > Faciliteit");
+                    break;
+                case GAAT_NAAR_KAMER:
+                    setHuidigeActiviteit("✓ Check-in");
+                    break;
+                case GAAT_NAAR_LOBBY:
+                    setHuidigeActiviteit("✗ Check-out");
+                    break;
+                case VERLAAT_HOTEL:
+                    setHuidigeActiviteit("👋 Vertrekt");
+                    break;
+                default:
+                    setHuidigeActiviteit("");
+            }
+        }
+    }
 
     private void handleLiftLogic() {
         if (lift != null) {
             this.x = lift.getX();
             this.y = lift.getY();
 
-            if (Math.abs(lift.getY() - (doelVerdieping + 0.5)) < 0.2 && lift.isIdle()) {
+            // Controleer of we op onze doelverdieping zijn en lift stillaat
+            if ((int)lift.getY() == doelVerdieping && lift.isIdle()) {
                 lift.verwijderGast(this);
                 this.inLift = false;
                 this.y = doelVerdieping + 0.5;
@@ -132,12 +183,16 @@ public class Gast extends Persoon {
             this.destX = this.x;
             this.state = State.WANDELEN;
         } else if (lift != null) {
-            if (Math.abs(lift.getY() - this.y) < 0.5 && lift.isIdle()) {
-                if (lift.voegGastToe(this)) {
+            if (Math.abs(lift.getY() - this.y) < 1.0 && lift.isIdle()) {
+                // Kies willekeurig doeketage (behalve huidge)
+                this.doelVerdieping = RANDOM.nextInt(maxY);
+                if (this.doelVerdieping == (int)this.y) {
+                    this.doelVerdieping = (this.doelVerdieping + 1) % maxY;
+                }
+                
+                if (lift.voegGastToe(this, doelVerdieping)) {
                     this.inLift = true;
-                    this.doelVerdieping = RANDOM.nextInt(maxY);
                     this.state = State.IN_LIFT;
-                    lift.roepNaar(doelVerdieping + 1);
                 }
             }
         }

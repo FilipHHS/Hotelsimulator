@@ -32,35 +32,33 @@ public class Schoonmaker extends Persoon {
 
     @Override
     public void onTick() {
+        // Update activiteit label
+        updateActiviteitLabel();
+        
         if (inLift) {
             handleLiftMovement();
             return;
         }
 
-        // 1. Zoek werk
+        // ... existing code...
         Kamer viezeKamer = zoekViezeKamer();
 
-        // 2. Als er geen vuile kamer is: BLIJF IN OPSLAG!
         if (viezeKamer == null) {
-            // If we were going to a room, cancel and go back to storage
             if (state == State.NAAR_DOEL) {
                 state = State.VRIJ;
                 huidigKamer = null;
             }
             
-            // Return to storage and stay there (7.5, 5.5)
             if (Math.abs(x - 7.5) > 0.1) {
                 x += (x < 7.5) ? SPEED : -SPEED;
             } else if (Math.abs(y - 5.5) > 0.1) {
                 y += (y < 5.5) ? SPEED : -SPEED;
             } else {
                 state = State.VRIJ;
-                // IMPORTANT: Don't do anything else, just stay here!
             }
-            return;  // Exit early - don't process further
+            return;
         }
 
-        // 3. There's work to do - go clean
         double targetX = viezeKamer.getArea().getX() + 0.5;
         double targetY = viezeKamer.getArea().getY() + 0.5;
 
@@ -68,6 +66,29 @@ public class Schoonmaker extends Persoon {
             werkAanKamer();
         } else {
             beweeg(targetX, targetY, viezeKamer);
+        }
+    }
+    
+    private void updateActiviteitLabel() {
+        if (inLift) {
+            setHuidigeActiviteit("🛗 In Lift");
+        } else {
+            switch (state) {
+                case VRIJ:
+                    setHuidigeActiviteit("⏳ Idle");
+                    break;
+                case NAAR_DOEL:
+                    setHuidigeActiviteit("🚶 Naar Kamer");
+                    break;
+                case SCHOONMAKEN:
+                    setHuidigeActiviteit("🧹 Schoon");
+                    break;
+                case IN_LIFT:
+                    setHuidigeActiviteit("🛗 In Lift");
+                    break;
+                default:
+                    setHuidigeActiviteit("");
+            }
         }
     }
 
@@ -115,12 +136,11 @@ public class Schoonmaker extends Persoon {
     }
 
     private void stapInLift(int doelVerdieping) {
-        if (lift != null && Math.abs(lift.getY() - y) < 0.2 && lift.isIdle()) {
-            if (lift.voegGastToe(this)) {
+        if (lift != null && Math.abs(lift.getY() - y) < 0.3 && lift.isIdle()) {
+            if (lift.voegGastToe(this, doelVerdieping)) {
                 this.inLift = true;
                 this.doelVerdieping = doelVerdieping;
                 this.state = State.IN_LIFT;
-                lift.roepNaar(doelVerdieping);
             }
         }
     }
@@ -130,7 +150,7 @@ public class Schoonmaker extends Persoon {
         this.y = lift.getY();
 
         // Exit lift when at the correct floor and lift is idle
-        if (Math.abs(lift.getY() - (doelVerdieping + 0.5)) < 0.2 && lift.isIdle()) {
+        if ((int)lift.getY() == doelVerdieping && lift.isIdle()) {
             // Double-check: Is there still a dirty room to clean?
             Kamer viezeKamer = zoekViezeKamer();
             if (viezeKamer == null) {
