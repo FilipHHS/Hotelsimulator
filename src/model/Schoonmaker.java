@@ -15,8 +15,9 @@ public class Schoonmaker extends Persoon {
     private int schoonmaakTimer = 0;
     private boolean inLift = false;
     private int doelVerdieping;
+    private int maxY = 6;  // Default lobby floor (can be overridden)
 
-    private enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT }
+    private enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT, EVACUATIE }
     private State state = State.VRIJ;
 
     public Schoonmaker(String naam, int startX, int startY) {
@@ -35,8 +36,32 @@ public class Schoonmaker extends Persoon {
         // Update activiteit label
         updateActiviteitLabel();
         
+        // Handle fire alarm evacuation
+        if (fireAlarmActive && !evacuatieBegonnen) {
+            startEvacuatie();
+        }
+        
+        // Handle when fire alarm is cleared while in evacuation
+        if (!fireAlarmActive && evacuatieBegonnen) {
+            if (state == State.EVACUATIE) {
+                // Go back to normal
+                evacuatieBegonnen = false;
+                state = State.VRIJ;
+                setHuidigeActiviteit("⏳ Idle");
+                // Reset position to storage
+                x = 7.5;
+                y = 5.5;
+            }
+        }
+        
         if (inLift) {
             handleLiftMovement();
+            return;
+        }
+        
+        // If currently evacuating, handle that
+        if (state == State.EVACUATIE) {
+            handleEvacuatie();
             return;
         }
 
@@ -85,6 +110,9 @@ public class Schoonmaker extends Persoon {
                     break;
                 case IN_LIFT:
                     setHuidigeActiviteit("🛗 In Lift");
+                    break;
+                case EVACUATIE:
+                    setHuidigeActiviteit("🔥 EVACUATIE!");
                     break;
                 default:
                     setHuidigeActiviteit("");
@@ -176,11 +204,64 @@ public class Schoonmaker extends Persoon {
         }
         return null;
     }
+    
+    /**
+     * Wordt aangeroepen bij brandalarm - interrupt alle activiteiten
+     */
+    private void startEvacuatie() {
+        evacuatieBegonnen = true;
+        
+        // Leave cleaner immediately
+        if (inLift && lift != null) {
+            lift.verwijderGast(this);
+            inLift = false;
+        }
+        
+        huidigKamer = null;
+        state = State.EVACUATIE;
+        System.out.println("[FireAlarm] 🚨 " + getNaam() + " begint evacuatie naar lobby!");
+    }
+    
+    /**
+     * Schoonmaker evacuation to lobby via stairs
+     */
+    private void handleEvacuatie() {
+        double lobbyX = 1.5;
+        int lobbyY = maxY - 1;  // Dynamic lobby floor based on hotel size
+        
+        // Go to stairs if not on lobby floor
+        if ((int)y != lobbyY) {
+            double stairX = 8.5;
+            if (Math.abs(x - stairX) > SPEED) {
+                x += (x < stairX) ? SPEED : -SPEED;
+            } else {
+                // Move up stairs
+                if (y < lobbyY) {
+                    y += SPEED;
+                } else if (y > lobbyY) {
+                    y -= SPEED;
+                }
+            }
+        } else {
+            // On lobby floor, move to lobby position
+            double dx = lobbyX - x;
+            if (Math.abs(dx) < SPEED) {
+                x = lobbyX;
+                // Reached lobby - exit building
+                state = State.VRIJ;
+                setHuidigeActiviteit("👋 Verlaten gebouw");
+                // Move outside
+                x = -1.5; // Stay just outside
+            } else {
+                x += (dx > 0) ? SPEED : -SPEED;
+            }
+        }
+    }
 
     // Setters voor initialisatie
     public void setHotel(Hotel h) { this.hotel = h; }
     public void setLift(Lift l) { this.lift = l; }
-    public void setGridBounds(int mx, int my) { } // Niet meer nodig met vaste opslag
+    public void setGridBounds(int mx, int my) { this.maxY = my; }  // Store hotel height
 
     // Getters voor tekenen
     public double getX() { return x; }

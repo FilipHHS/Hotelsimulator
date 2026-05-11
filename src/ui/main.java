@@ -33,6 +33,17 @@ public class main {
 
                 startPauseButton = new JButton("Start");
                 startPauseButton.addActionListener(e -> toggleSimulation());
+                
+                // --- FIRE ALARM BUTTON ---
+                JButton fireAlarmButton = new JButton("🔥 BRANDALARM");
+                fireAlarmButton.setBackground(new java.awt.Color(255, 50, 50));
+                fireAlarmButton.setForeground(java.awt.Color.WHITE);
+                fireAlarmButton.addActionListener(e -> triggerFireAlarm());
+                
+                JButton clearAlarmButton = new JButton("✓ All Clear");
+                clearAlarmButton.setBackground(new java.awt.Color(50, 200, 50));
+                clearAlarmButton.setForeground(java.awt.Color.WHITE);
+                clearAlarmButton.addActionListener(e -> clearFireAlarm());
 
                 JLabel speedLabel = new JLabel("Tick Interval: 100ms");
                 JSlider speedSlider = new JSlider(50, 1000, 100);
@@ -49,6 +60,8 @@ public class main {
                 controlPanel.add(layoutDropdown);
                 controlPanel.add(loadButton);
                 controlPanel.add(startPauseButton);
+                controlPanel.add(fireAlarmButton);
+                controlPanel.add(clearAlarmButton);
                 controlPanel.add(speedLabel);
                 controlPanel.add(speedSlider);
                 controlPanel.add(statusLabel);
@@ -174,5 +187,37 @@ public class main {
         String[] files = dir.list((d, name) -> name.endsWith(".json"));
         if (files != null) Arrays.sort(files);
         return (files != null) ? files : new String[0];
+    }
+    
+    // === FIRE ALARM METHODS (US4.3: Brandalarm) ===
+    
+    /**
+     * Trigger fire alarm - evacuate all people to lobby
+     */
+    private static void triggerFireAlarm() {
+        if (simulator != null && simulator.isRunning()) {
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("🚨 🚨 🚨  FIRE ALARM ACTIVATED - EVACUATIE BEGONNEN  🚨 🚨 🚨");
+            System.out.println("=".repeat(70) + "\n");
+            
+            simulator.triggerFireAlarm();
+            statusLabel.setText("🔥 FIRE ALARM ACTIVE - EVACUATIE IN PROGRESS");
+        } else {
+            statusLabel.setText("⚠️ Simulatie moet actief zijn voor brandalarm!");
+        }
+    }
+    
+    /**
+     * Clear fire alarm - resume normal operations
+     */
+    private static void clearFireAlarm() {
+        if (simulator != null) {
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("✓ ✓ ✓  FIRE ALARM CLEARED - EVACUATION COMPLETE  ✓ ✓ ✓");
+            System.out.println("=".repeat(70) + "\n");
+            
+            simulator.clearFireAlarm();
+            statusLabel.setText("✓ Brandalarm uitgeschakeld - Normaal operatie");
+        }
     }
 }

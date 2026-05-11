@@ -33,7 +33,8 @@ public class Gast extends Persoon {
         IN_FACILITEIT,
         GAAT_NAAR_LOBBY,
         GAAT_NAAR_KAMER,
-        VERLAAT_HOTEL
+        VERLAAT_HOTEL,
+        EVACUATIE
     }
 
     private State state = State.WANDELEN;
@@ -51,6 +52,26 @@ public class Gast extends Persoon {
         // Update activiteit label
         updateActiviteitLabel();
         
+        // Handle fire alarm evacuation
+        if (fireAlarmActive && !evacuatieBegonnen) {
+            startEvacuatie();
+        }
+        
+        // Handle when fire alarm is cleared while in evacuation
+        if (!fireAlarmActive && evacuatieBegonnen) {
+            if (state == State.EVACUATIE || state == State.VERLAAT_HOTEL) {
+                // Go back to lobby and resume normal
+                evacuatieBegonnen = false;
+                state = State.WANDELEN;
+                setHuidigeActiviteit("🚶 Wandel");
+                huidigKamer = null;
+                // Reset position to lobby
+                x = 1.5;
+                y = maxY - 1;
+                destX = x;
+            }
+        }
+        
         if (!inLift) {
             switch (state) {
                 case WANDELEN: randomWalk(); break;
@@ -61,6 +82,7 @@ public class Gast extends Persoon {
                 case GAAT_NAAR_KAMER: beweegNaarKamer(); break;
                 case GAAT_NAAR_LOBBY: beweegNaarLobby(); break;
                 case VERLAAT_HOTEL: beweegNaarExit(); break;
+                case EVACUATIE: beweegNaarLobbyDirect(); break;
             }
         } else {
             handleLiftLogic();
@@ -107,6 +129,9 @@ public class Gast extends Persoon {
                     break;
                 case VERLAAT_HOTEL:
                     setHuidigeActiviteit("👋 Vertrekt");
+                    break;
+                case EVACUATIE:
+                    setHuidigeActiviteit("🔥 EVACUATIE!");
                     break;
                 default:
                     setHuidigeActiviteit("");
@@ -268,8 +293,16 @@ public class Gast extends Persoon {
     }
 
     private void beweegNaarExit() {
-        x -= SPEED;
-        if (x < -1) System.out.println("[Gast] " + getNaam() + " is weg.");
+        // Move outside (-1.5 to -2.0 range)
+        double exitX = -1.5;
+        double dx = exitX - x;
+        if (Math.abs(dx) < SPEED) {
+            x = exitX;
+            // Stay outside, don't move further
+            setHuidigeActiviteit("👋 Buiten hotel");
+        } else {
+            x -= SPEED;  // Keep moving left
+        }
     }
 
     // === SETTERS & GETTERS ===
@@ -296,10 +329,67 @@ public class Gast extends Persoon {
             this.state = State.GAAT_NAAR_LOBBY;
         }
     }
+    
     /**
-     * Wordt aangeroepen door de lift om de positie van de gast te synchroniseren
-     * terwijl deze in de lift staat.
+     * Wordt aangeroepen bij brandalarm - interrupt alle activiteiten
      */
+    private void startEvacuatie() {
+        evacuatieBegonnen = true;
+        
+        // Stop alle lopende activiteiten
+        if (inLift && lift != null) {
+            lift.verwijderGast(this);
+            inLift = false;
+            this.x = lift.getX();
+            this.y = (int)lift.getY() + 0.5;
+        }
+        
+        // Cancel alle andere activiteiten
+        huidigKamer = null;
+        huidigerFaciliteitType = null;
+        faciliteitsBezoekDuur = 0;
+        roomStayTimer = 0;
+        
+        // Start evacuation towards lobby via stairs
+        this.state = State.EVACUATIE;
+        this.usesTrap = true; // FORCE stairs, not elevator
+        System.out.println("[FireAlarm] 🚨 " + getNaam() + " begint evacuatie naar lobby!");
+    }
+    
+    /**
+     * Beweeg direct naar lobby via trap (tijdens brandalam)
+     */
+    private void beweegNaarLobbyDirect() {
+        double lobbyX = 1.5;      // Lobby position X
+        double stairX = 8.5;       // Stairs position X
+        int lobbyY = maxY - 1;     // Lobby floor
+        
+        // Step 1: Move to stairs if not on lobby floor
+        if ((int)y != lobbyY) {
+            // First move to stair position X
+            if (Math.abs(x - stairX) > SPEED) {
+                x += (x < stairX) ? SPEED : -SPEED;
+            } else {
+                // At stairs, move to lobby floor
+                if (y < lobbyY) {
+                    y += SPEED;
+                } else if (y > lobbyY) {
+                    y -= SPEED;
+                }
+            }
+        } else {
+            // Step 2: On lobby floor, move to lobby position
+            double dx = lobbyX - x;
+            if (Math.abs(dx) < SPEED) {
+                x = lobbyX;
+                // Reached lobby - now exit building (go outside)
+                this.state = State.VERLAAT_HOTEL;
+                setHuidigeActiviteit("👋 Verlaat Hotel");
+            } else {
+                x += (dx > 0) ? SPEED : -SPEED;
+            }
+        }
+    }
 
 
 }

@@ -17,6 +17,10 @@ public abstract class Persoon implements TickListener {
     protected double y;
     protected double destX;
     protected double destY; // destY toegevoegd voor volledige bewegingsvrijheid
+    
+    // FireAlarm evacuation flag
+    protected boolean fireAlarmActive = false;
+    protected boolean evacuatieBegonnen = false;
 
     public Persoon(String naam, String type) {
         this.id = volgendeId++;
@@ -61,6 +65,21 @@ public abstract class Persoon implements TickListener {
     public void setX(double x) { this.x = x; }
     public void setY(double y) { this.y = y; }
     public void setHuidigeActiviteit(String activiteit) { this.huidigeActiviteit = activiteit; }
+    
+    // Fire Alarm methods
+    public void activeerFireAlarm() {
+        this.fireAlarmActive = true;
+        this.evacuatieBegonnen = false;
+        System.out.println("[FireAlarm] 🔥 ALARM GEACTIVEERD voor " + naam);
+    }
+    
+    public void deactiveerFireAlarm() {
+        this.fireAlarmActive = false;
+        System.out.println("[FireAlarm] ✓ ALARM GEDEACTIVEERD voor " + naam);
+    }
+    
+    public boolean isFireAlarmActive() { return fireAlarmActive; }
+    public boolean isEvacuatieBegonnen() { return evacuatieBegonnen; }
 
     @Override
     public abstract void onTick();
