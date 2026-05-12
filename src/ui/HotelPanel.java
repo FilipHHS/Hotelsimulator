@@ -7,14 +7,17 @@ import model.Persoon;
 import model.Lift;
 import model.Schoonmaker;
 import javax.swing.*;
+import javax.swing.event.MouseInputListener;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 /**
  * Dit paneel is verantwoordelijk voor het visueel weergeven van het hotel.
  * US4.4: Grafische weergave implementatie voor het volgen van de simulatie.
+ * US2.1: Klik op Lobby om gastenoverzicht te openen
  */
-public class HotelPanel extends JPanel {
+public class HotelPanel extends JPanel implements MouseInputListener {
 
     private Hotel hotel;
     private Lift lift;  // Referentie naar de lift om deze te tekenen
@@ -23,10 +26,17 @@ public class HotelPanel extends JPanel {
 
     // status van simulatie (optioneel)
     private boolean running = true;
+    
+    // US2.1: Callback voor lobby clicks
+    private Runnable onLobbyClick;
 
     public HotelPanel(Hotel hotel) {
         this.hotel = hotel;
         updateDimensions();
+        
+        // US2.1: Voeg mouse listener toe
+        addMouseListener(this);
+        setFocusable(true);
     }
 
     public void setHotel(Hotel hotel) {
@@ -42,6 +52,11 @@ public class HotelPanel extends JPanel {
     // Simulator kan dit gebruiken
     public void setRunning(boolean running) {
         this.running = running;
+    }
+    
+    // US2.1: Stel callback in voor lobby clicks
+    public void setOnLobbyClick(Runnable callback) {
+        this.onLobbyClick = callback;
     }
 
     private void updateDimensions() {
@@ -234,6 +249,65 @@ public class HotelPanel extends JPanel {
         g.setColor(Color.BLACK);
         g.drawString("Lift", lx + 30, ly + 50);
     }
+    
+    // === US2.1: MOUSE EVENT HANDLERS ===
+    
+    /**
+     * Detecteert of de gebruiker op een Lobby klikt
+     */
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (hotel == null) return;
+        
+        // Bereken offsets
+        int hotelBreedte = hotel.getBreedte() * VAKJE_GROOTTE;
+        int hotelHoogte = hotel.getHoogte() * VAKJE_GROOTTE;
+        int offsetX = (getWidth() - hotelBreedte) / 2;
+        int offsetY = (getHeight() - hotelHoogte) / 2;
+        
+        // Check welke area is geklikt
+        int clickX = e.getX();
+        int clickY = e.getY();
+        
+        for (Area area : hotel.getAreas()) {
+            if ("Lobby".equals(area.getAreaType())) {
+                int x = (area.getX() - 1) * VAKJE_GROOTTE + offsetX;
+                int y = (area.getY() - 1) * VAKJE_GROOTTE + offsetY;
+                int breedte = area.getBreedte() * VAKJE_GROOTTE;
+                int hoogte = area.getHoogte() * VAKJE_GROOTTE;
+                
+                // Check of klik in Lobby gebied valt
+                if (clickX >= x && clickX <= x + breedte && 
+                    clickY >= y && clickY <= y + hoogte) {
+                    
+                    System.out.println("[US2.1] 🏨 Lobby aangeklikt - Gastenoverzicht openen");
+                    
+                    if (onLobbyClick != null) {
+                        onLobbyClick.run();
+                    }
+                    return;
+                }
+            }
+        }
+    }
+    
+    @Override
+    public void mousePressed(MouseEvent e) {}
+    
+    @Override
+    public void mouseReleased(MouseEvent e) {}
+    
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+    
+    @Override
+    public void mouseExited(MouseEvent e) {}
+    
+    @Override
+    public void mouseDragged(MouseEvent e) {}
+    
+    @Override
+    public void mouseMoved(MouseEvent e) {}
 
     private String getLabel(Area area) {
         switch (area.getAreaType()) {

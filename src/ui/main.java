@@ -16,6 +16,7 @@ public class main {
     private static JButton startPauseButton;
     private static Simulator simulator;
     private static Timer simulationTimer;
+    private static GuestListWindow guestListWindow;  // US2.1: Gastenoverzicht
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -79,6 +80,9 @@ public class main {
                 if (simulator.getLift() != null) {
                     hotelPanel.setLift(simulator.getLift());
                 }
+                
+                // US2.1: Stel callback in voor lobby-clicks
+                hotelPanel.setOnLobbyClick(() -> openGuestListWindow(hotel));
 
                 frame.add(controlPanel, "North");
                 frame.add(hotelPanel, "Center");
@@ -135,6 +139,9 @@ public class main {
             simulator = new Simulator(newHotel, hotelPanel);
 
             if (simulator.getLift() != null) hotelPanel.setLift(simulator.getLift());
+            
+            // US2.1: Stel callback in voor lobby-clicks
+            hotelPanel.setOnLobbyClick(() -> openGuestListWindow(newHotel));
 
             startPauseButton.setText("Start");
             statusLabel.setText("Geladen: " + selected);
@@ -218,6 +225,24 @@ public class main {
             
             simulator.clearFireAlarm();
             statusLabel.setText("✓ Brandalarm uitgeschakeld - Normaal operatie");
+        }
+    }
+    
+    // === US2.1: GUEST LIST WINDOW METHODS ===
+    
+    /**
+     * Opent het gastenoverzicht venster
+     * Toont alle gasten met hun huidge status en informatie
+     */
+    private static void openGuestListWindow(Hotel hotel) {
+        if (guestListWindow != null && guestListWindow.isVisible()) {
+            // Venster is al open - zet het in focus en vernieuw
+            guestListWindow.toFront();
+            guestListWindow.requestFocus();
+        } else {
+            // Maak nieuw venster
+            guestListWindow = new GuestListWindow(hotel);
+            guestListWindow.setVisible(true);
         }
     }
 }
