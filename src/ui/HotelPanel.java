@@ -6,6 +6,7 @@ import model.Gast;
 import model.Persoon;
 import model.Lift;
 import model.Schoonmaker;
+import model.Kamer;
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
 import java.awt.*;
@@ -29,6 +30,10 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     
     // US2.1: Callback voor lobby clicks
     private Runnable onLobbyClick;
+
+    // New: Callbacks voor kamer en persoon detail windows
+    private java.util.function.Consumer<model.Kamer> onRoomClick;
+    private java.util.function.Consumer<model.Persoon> onPersonClick;
 
     public HotelPanel(Hotel hotel) {
         this.hotel = hotel;
@@ -57,6 +62,15 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     // US2.1: Stel callback in voor lobby clicks
     public void setOnLobbyClick(Runnable callback) {
         this.onLobbyClick = callback;
+    }
+
+    // New: Stel callbacks in voor kamer en persoon details
+    public void setOnRoomClick(java.util.function.Consumer<model.Kamer> callback) {
+        this.onRoomClick = callback;
+    }
+
+    public void setOnPersonClick(java.util.function.Consumer<model.Persoon> callback) {
+        this.onPersonClick = callback;
     }
 
     private void updateDimensions() {
@@ -253,35 +267,56 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     // === US2.1: MOUSE EVENT HANDLERS ===
     
     /**
-     * Detecteert of de gebruiker op een Lobby klikt
+     * Detecteert clicks op personen, kamers en lobby
+     * Priority: Personen > Kamers > Lobby
      */
     @Override
     public void mouseClicked(MouseEvent e) {
         if (hotel == null) return;
         
+        int clickX = e.getX();
+        int clickY = e.getY();
+
         // Bereken offsets
         int hotelBreedte = hotel.getBreedte() * VAKJE_GROOTTE;
         int hotelHoogte = hotel.getHoogte() * VAKJE_GROOTTE;
         int offsetX = (getWidth() - hotelBreedte) / 2;
         int offsetY = (getHeight() - hotelHoogte) / 2;
         
-        // Check welke area is geklikt
-        int clickX = e.getX();
-        int clickY = e.getY();
-        
+        // PRIORITY 1: Check personen (gasten en schoonmakers)
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (isClickOnPerson(persoon, clickX, clickY, offsetX, offsetY)) {
+                System.out.println("[Click] 👤 Persoon aangeklikt: " + persoon.getNaam());
+                if (onPersonClick != null) {
+                    onPersonClick.accept(persoon);
+                }
+                return;
+            }
+        }
+
+        // PRIORITY 2: Check kamers (rooms)
+        for (Area area : hotel.getAreas()) {
+            if ("Room".equals(area.getAreaType())) {
+                if (isClickOnArea(area, clickX, clickY, offsetX, offsetY)) {
+                    // Zoek de kamer met deze area
+                    for (Kamer k : hotel.getKamers()) {
+                        if (k.getArea() != null && k.getArea().equals(area)) {
+                            System.out.println("[Click] 🚪 Kamer aangeklikt: " + k.getKamernummer());
+                            if (onRoomClick != null) {
+                                onRoomClick.accept(k);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // PRIORITY 3: Check lobby
         for (Area area : hotel.getAreas()) {
             if ("Lobby".equals(area.getAreaType())) {
-                int x = (area.getX() - 1) * VAKJE_GROOTTE + offsetX;
-                int y = (area.getY() - 1) * VAKJE_GROOTTE + offsetY;
-                int breedte = area.getBreedte() * VAKJE_GROOTTE;
-                int hoogte = area.getHoogte() * VAKJE_GROOTTE;
-                
-                // Check of klik in Lobby gebied valt
-                if (clickX >= x && clickX <= x + breedte && 
-                    clickY >= y && clickY <= y + hoogte) {
-                    
+                if (isClickOnArea(area, clickX, clickY, offsetX, offsetY)) {
                     System.out.println("[US2.1] 🏨 Lobby aangeklikt - Gastenoverzicht openen");
-                    
                     if (onLobbyClick != null) {
                         onLobbyClick.run();
                     }
@@ -289,6 +324,41 @@ public class HotelPanel extends JPanel implements MouseInputListener {
                 }
             }
         }
+    }
+
+    /**
+     * Helpermethod: Check of click op een persoon valt (cirkeldetectie)
+     */
+    private boolean isClickOnPerson(Persoon persoon, int clickX, int clickY, int offsetX, int offsetY) {
+        int px = (int)(persoon.getX() * VAKJE_GROOTTE) + offsetX - 8;
+        int py = (int)(persoon.getY() * VAKJE_GROOTTE) + offsetY - 8;
+
+        // Gast: cirkel met straal ~8
+        if (persoon instanceof Gast) {
+            int centerX = px + 8;
+            int centerY = py + 8;
+            int distance = (int) Math.sqrt(Math.pow(clickX - centerX, 2) + Math.pow(clickY - centerY, 2));
+            return distance <= 10;  // Margin voor usability
+        }
+
+        // Schoonmaker: vierkant 16x16
+        if (persoon instanceof Schoonmaker) {
+            return clickX >= px && clickX <= px + 16 && clickY >= py && clickY <= py + 16;
+        }
+
+        return false;
+    }
+
+    /**
+     * Helpermethod: Check of click op een area (rechthoek) valt
+     */
+    private boolean isClickOnArea(Area area, int clickX, int clickY, int offsetX, int offsetY) {
+        int x = (area.getX() - 1) * VAKJE_GROOTTE + offsetX;
+        int y = (area.getY() - 1) * VAKJE_GROOTTE + offsetY;
+        int breedte = area.getBreedte() * VAKJE_GROOTTE;
+        int hoogte = area.getHoogte() * VAKJE_GROOTTE;
+
+        return clickX >= x && clickX <= x + breedte && clickY >= y && clickY <= y + hoogte;
     }
     
     @Override

@@ -18,6 +18,9 @@ public class main {
     private static Timer simulationTimer;
     private static GuestListWindow guestListWindow;  // US2.1: Gastenoverzicht
 
+    // New: Detail windows (cache)
+    private static java.util.HashMap<Object, JFrame> detailWindows = new java.util.HashMap<>();
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -34,13 +37,13 @@ public class main {
 
                 startPauseButton = new JButton("Start");
                 startPauseButton.addActionListener(e -> toggleSimulation());
-                
+
                 // --- FIRE ALARM BUTTON ---
                 JButton fireAlarmButton = new JButton("🔥 BRANDALARM");
                 fireAlarmButton.setBackground(new java.awt.Color(255, 50, 50));
                 fireAlarmButton.setForeground(java.awt.Color.WHITE);
                 fireAlarmButton.addActionListener(e -> triggerFireAlarm());
-                
+
                 JButton clearAlarmButton = new JButton("✓ All Clear");
                 clearAlarmButton.setBackground(new java.awt.Color(50, 200, 50));
                 clearAlarmButton.setForeground(java.awt.Color.WHITE);
@@ -80,9 +83,9 @@ public class main {
                 if (simulator.getLift() != null) {
                     hotelPanel.setLift(simulator.getLift());
                 }
-                
-                // US2.1: Stel callback in voor lobby-clicks
-                hotelPanel.setOnLobbyClick(() -> openGuestListWindow(hotel));
+
+                // Setup all callbacks (lobby, room, person)
+                setupHotelPanelCallbacks(hotel, hotelPanel);
 
                 frame.add(controlPanel, "North");
                 frame.add(hotelPanel, "Center");
@@ -139,9 +142,9 @@ public class main {
             simulator = new Simulator(newHotel, hotelPanel);
 
             if (simulator.getLift() != null) hotelPanel.setLift(simulator.getLift());
-            
-            // US2.1: Stel callback in voor lobby-clicks
-            hotelPanel.setOnLobbyClick(() -> openGuestListWindow(newHotel));
+
+            // Setup all callbacks (lobby, room, person)
+            setupHotelPanelCallbacks(newHotel, hotelPanel);
 
             startPauseButton.setText("Start");
             statusLabel.setText("Geladen: " + selected);
@@ -195,9 +198,9 @@ public class main {
         if (files != null) Arrays.sort(files);
         return (files != null) ? files : new String[0];
     }
-    
+
     // === FIRE ALARM METHODS (US4.3: Brandalarm) ===
-    
+
     /**
      * Trigger fire alarm - evacuate all people to lobby
      */
@@ -206,14 +209,14 @@ public class main {
             System.out.println("\n" + "=".repeat(70));
             System.out.println("🚨 🚨 🚨  FIRE ALARM ACTIVATED - EVACUATIE BEGONNEN  🚨 🚨 🚨");
             System.out.println("=".repeat(70) + "\n");
-            
+
             simulator.triggerFireAlarm();
             statusLabel.setText("🔥 FIRE ALARM ACTIVE - EVACUATIE IN PROGRESS");
         } else {
             statusLabel.setText("⚠️ Simulatie moet actief zijn voor brandalarm!");
         }
     }
-    
+
     /**
      * Clear fire alarm - resume normal operations
      */
@@ -222,14 +225,14 @@ public class main {
             System.out.println("\n" + "=".repeat(70));
             System.out.println("✓ ✓ ✓  FIRE ALARM CLEARED - EVACUATION COMPLETE  ✓ ✓ ✓");
             System.out.println("=".repeat(70) + "\n");
-            
+
             simulator.clearFireAlarm();
             statusLabel.setText("✓ Brandalarm uitgeschakeld - Normaal operatie");
         }
     }
-    
+
     // === US2.1: GUEST LIST WINDOW METHODS ===
-    
+
     /**
      * Opent het gastenoverzicht venster
      * Toont alle gasten met hun huidge status en informatie
@@ -244,5 +247,57 @@ public class main {
             guestListWindow = new GuestListWindow(hotel);
             guestListWindow.setVisible(true);
         }
+    }
+
+    // === NEW: DETAIL WINDOW METHODS ===
+
+    /**
+     * Opent kamer-detail window (reuse als al open)
+     */
+    private static void openRoomDetailWindow(Kamer kamer) {
+        Object key = kamer;  // Use Kamer object as key
+
+        if (detailWindows.containsKey(key) && detailWindows.get(key).isVisible()) {
+            // Window al open - focus
+            detailWindows.get(key).toFront();
+            detailWindows.get(key).requestFocus();
+        } else {
+            // Maak nieuw window
+            RoomDetailWindow window = new RoomDetailWindow(kamer);
+            detailWindows.put(key, window);
+            window.setVisible(true);
+        }
+    }
+
+    /**
+     * Opent persoon-detail window (reuse als al open)
+     */
+    private static void openPersonDetailWindow(Persoon persoon) {
+        Object key = persoon;  // Use Persoon object as key
+
+        if (detailWindows.containsKey(key) && detailWindows.get(key).isVisible()) {
+            // Window al open - focus
+            detailWindows.get(key).toFront();
+            detailWindows.get(key).requestFocus();
+        } else {
+            // Maak nieuw window
+            PersonDetailWindow window = new PersonDetailWindow(persoon);
+            detailWindows.put(key, window);
+            window.setVisible(true);
+        }
+    }
+
+    /**
+     * Helpermethod: Stel alle callbacks in voor een hotel + panel combinatie
+     */
+    private static void setupHotelPanelCallbacks(Hotel hotel, HotelPanel panel) {
+        // Lobby click
+        panel.setOnLobbyClick(() -> openGuestListWindow(hotel));
+
+        // Kamer click
+        panel.setOnRoomClick(kamer -> openRoomDetailWindow(kamer));
+
+        // Persoon click
+        panel.setOnPersonClick(persoon -> openPersonDetailWindow(persoon));
     }
 }

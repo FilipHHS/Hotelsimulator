@@ -1,0 +1,212 @@
+@startuml
+' Class diagram for Hotelsimulator project
+' Generated from source files in workspace
+
+package model {
+  interface TickListener {
+    +void onTick()
+  }
+
+  class Area {
+    -String AreaType
+    -String Position
+    -String Dimension
+    -String Classification
+    -int Capacity
+    +int getX()
+    +int getY()
+    +int getBreedte()
+    +int getHoogte()
+  }
+
+  class Event implements TickListener {
+    -int ticksRemaining
+    +Event(int)
+    +void onTick()
+  }
+
+  class EventBusImpl {
+    -List<TickListener> listeners
+    -List<String> eventLog
+    +void subscribe(TickListener)
+    +void unsubscribe(TickListener)
+    +void publishEvent(String, Object)
+    +List<String> getEventLog()
+  }
+
+  class LayoutLoader {
+    +static Hotel laadLayout(String)
+    +static void valideerLayout(String[][])
+  }
+
+  class Hotel {
+    -String[][] grid
+    -int breedte
+    -int hoogte
+    -List<Area> areas
+    -List<Persoon> personen
+    -List<Kamer> kamers
+    +void addPersoon(Persoon)
+    +void updatePersoonPositie(Persoon, int, int)
+    +List<Persoon> getPersonen()
+    +Kamer zoekVrijeKamer(String)
+  }
+
+  class Kamer {
+    enum KamerStatus { VRIJ, BEZET, SCHOONMAKEN }
+    -int kamernummer
+    -String type
+    -KamerStatus status
+    -Area area
+    +int getKamernummer()
+    +String getType()
+    +void setStatus(KamerStatus)
+    +Area getArea()
+  }
+
+  abstract class Persoon implements TickListener {
+    -int id
+    -String naam
+    -String type
+    -double x
+    -double y
+    -double destX
+    -double destY
+    -boolean fireAlarmActive
+    -boolean evacuatieBegonnen
+    +void setStartPositie(double,double)
+    +void setLiftPosition(double,double)
+    +String getNaam()
+    +double getX()
+    +double getY()
+    +String getHuidigeActiviteit()
+    +void activeerFireAlarm()
+    +void deactiveerFireAlarm()
+    +abstract void onTick()
+  }
+
+  class Gast extends Persoon {
+    -Hotel hotel
+    -Lift lift
+    -boolean inLift
+    -Kamer huidigKamer
+    +void checkinKamer(Kamer)
+    +void checkoutKamer()
+    +void onTick()
+  }
+
+  class Schoonmaker extends Persoon {
+    -Hotel hotel
+    -Lift lift
+    -Kamer huidigKamer
+    +void setHotel(Hotel)
+    +void setLift(Lift)
+    +void onTick()
+  }
+
+  class Lift implements TickListener {
+    -double x,y
+    -int schachtMinY, schachtMaxY
+    -List<Persoon> passagiers
+    -Map<Persoon,Integer> passengerDestinations
+    -boolean fireAlarmActive
+    +boolean voegGastToe(Persoon,int)
+    +void verwijderGast(Persoon)
+    +void activeerFireAlarm()
+    +void deactiveerFireAlarm()
+    +double getX()
+    +double getY()
+    +List<Persoon> getPassagiers()
+    +void onTick()
+  }
+
+  class HTEClock {
+    -List<TickListener> listeners
+    -long tickCount
+    +void addListener(TickListener)
+    +void removeListener(TickListener)
+    +void tick()
+  }
+
+  class SimulationClock {
+    -long tickInterval
+    -long lastTickTime
+    -int timestep
+    +boolean tick()
+    +void start()
+    +void stop()
+    +void reset()
+  }
+
+  class Simulator {
+    -Hotel hotel
+    -ui.HotelPanel hotelPanel
+    -SimulationClock clock
+    -HTEClock hteClock
+    -Lift lift
+    +void start()
+    +void pause()
+    +void tick()
+    +void triggerFireAlarm()
+    +void clearFireAlarm()
+  }
+
+  class SimulatieEngine {
+    -Hotel hotel
+    -ui.HotelPanel hotelPanel
+    -SimulationClock clock
+    +void start()
+    +void pause()
+    +void tick()
+  }
+
+}
+
+package ui {
+  class HotelPanel extends JPanel {
+    -model.Hotel hotel
+    -model.Lift lift
+    +void setHotel(Hotel)
+    +void setLift(Lift)
+  }
+
+  class GuestListWindow extends JFrame {
+    -model.Hotel hotel
+    +void updateGuestList()
+  }
+
+  class main {
+    +static void main(String[])
+  }
+}
+
+' Relationships
+TickListener <|.. Persoon
+TickListener <|.. model.Lift
+TickListener <|.. model.Event
+
+model.Persoon <|-- model.Gast
+model.Persoon <|-- model.Schoonmaker
+
+model.HTEClock "1" o-- "*" TickListener : listeners
+model.EventBusImpl --> TickListener : manages
+
+model.Hotel "1" *-- "0..*" model.Area : areas
+model.Hotel "1" *-- "0..*" model.Persoon : personen
+model.Hotel "1" *-- "0..*" model.Kamer : kamers
+
+model.Kamer --> model.Area : area
+model.Gast --> model.Kamer : huidigKamer
+model.Lift "1" *-- "0..*" model.Persoon : passagiers
+
+model.Simulator --> model.Hotel
+model.Simulator --> model.Lift
+model.Simulator --> model.HTEClock
+model.Simulator ..> ui.HotelPanel
+ui.HotelPanel ..> model.Lift
+ui.GuestListWindow --> model.Hotel
+
+model.LayoutLoader ..> model.Hotel : laadLayout()
+
+@enduml
+
