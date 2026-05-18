@@ -102,8 +102,9 @@ public class Simulator {
         if (running && clock.tick()) {
             hteClock.tick();
             
-            // Remove guests that have left the hotel (x < -1)
-            hotel.getPersonen().removeIf(p -> p instanceof Gast && p.getX() < -1.0);
+            // Remove only guests that have gone way outside (x < -2)
+            // Guests at x = -1.5 are still outside but can return
+            hotel.getPersonen().removeIf(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0);
             
             // Auto-check in waiting guests
             autoCheckInGuests();
@@ -122,6 +123,11 @@ public class Simulator {
     }
     
     private void autoCheckInGuests() {
+        // Block check-in during fire alarm
+        if (lift != null && lift.isFireAlarmActive()) {
+            return;  // No check-ins during evacuation!
+        }
+        
         try {
             for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
                 if (p instanceof Gast) {
@@ -147,6 +153,11 @@ public class Simulator {
     }
     
     private void autoCheckoutGuests() {
+        // Block checkout during fire alarm
+        if (lift != null && lift.isFireAlarmActive()) {
+            return;  // No checkouts during evacuation!
+        }
+        
         try {
             for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
                 if (p instanceof Gast) {
@@ -221,6 +232,46 @@ public class Simulator {
             if (p instanceof Gast && p.getNaam().equals(naam)) {
                 ((Gast) p).checkoutKamer();
             }
+        }
+    }
+    
+    /**
+     * Triggers a fire alarm - all personen evacuate to lobby via stairs
+     * US4.3: Brandalarm feature
+     */
+    public void triggerFireAlarm() {
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("🚨 🚨 🚨  FIRE ALARM ACTIVATED - EVACUATIE BEGONNEN  🚨 🚨 🚨");
+        System.out.println("=".repeat(60) + "\n");
+        
+        // Disable lift
+        if (lift != null) {
+            lift.activeerFireAlarm();
+        }
+        
+        // Alert all personen to evacuate
+        for (Persoon p : hotel.getPersonen()) {
+            p.activeerFireAlarm();
+        }
+    }
+    
+    /**
+     * Clears the fire alarm - simulation returns to normal
+     * US4.3: Brandalarm feature
+     */
+    public void clearFireAlarm() {
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("✓ ✓ ✓  FIRE ALARM CLEARED - EVACUATION COMPLETE  ✓ ✓ ✓");
+        System.out.println("=".repeat(60) + "\n");
+        
+        // Re-enable lift
+        if (lift != null) {
+            lift.deactiveerFireAlarm();
+        }
+        
+        // Clear alarm for all personen
+        for (Persoon p : hotel.getPersonen()) {
+            p.deactiveerFireAlarm();
         }
     }
 }
