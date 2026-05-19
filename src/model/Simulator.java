@@ -1,277 +1,326 @@
 package model;
 
-import model.TickListener;
 import ui.HotelPanel;
+import hotelevents.HotelEventType;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Simulator {
-    private boolean running = false;
-    private Hotel hotel;
-    private HotelPanel hotelPanel;
-    private SimulationClock clock;
-    private HTEClock hteClock;
-    private Lift lift;
-    private Area lobbyArea;
-    private int lastGuestSpawnTime = 0;
-    private Map<String, Integer> guestCheckInTime = new HashMap<>();  // Track check-in times
+/**
+     * Simulator: beheert de simulatie-loop, klok, lift en personen.
+     * Kort: initialiseert wereldobjecten, verwerkt ticks en regelt
+     * automatische check-ins/outs en brandalarm-gedrag.
+     */
+    public class Simulator {
+    // Control flags and timers
+    private boolean running = false;               // Of de simulatie loopt
+    private int lastGuestSpawnTime = 0;            // Teller voor automatisch spawnen van gasten
+
+    // Referenties naar model en UI
+    private Hotel hotel;                           // Hotel-model met kamers, areas en personen
+    private HotelPanel hotelPanel;                 // UI-paneel om te verversen
+    private SimulationClock clock;                 // Regelt het aantal ticks (tempo)
+    private HTEClock hteClock;                     // High-level tick event dispatcher
+    private EventBusImpl eventBus;                  // Event system (HotelEventType)
+
+    // Wereldobjecten en status
+    private Lift lift;                             // Lift-object als aanwezig in layout
+    private Area lobbyArea;                        // Referentie naar de Lobby area (startpositie gasten)
+    // Houdt bij hoeveel ticks een gast al in z'n kamer zit (naam -> ticks)
+    private Map<String, Integer> guestCheckInTime = new HashMap<>(); // Houdt bij hoe lang een gast er al is
 
     public Simulator(Hotel hotel, HotelPanel hotelPanel) {
         this.hotel = hotel;
         this.hotelPanel = hotelPanel;
         this.clock = new SimulationClock(100);
         this.hteClock = new HTEClock();
+        this.eventBus = new EventBusImpl();  // Initialize event system
 
         initialiseerLift();
         initialiseerPersonen();
     }
 
+    // --- INITIALISATIE METHODEN ---
+
+    // Zoek in de layout naar een area die 'Lift' of 'Schacht' heet en maak een Lift-object
     private void initialiseerLift() {
-        for (Area a : hotel.getAreas()) {
-            String type = a.getAreaType();
+        for (Area area : hotel.getAreas()) {
+            String type = area.getAreaType();
+
+            // Controleer of deze area de lift/schacht is
             if (type != null && (type.equalsIgnoreCase("Schacht") ||
                     type.equalsIgnoreCase("Lift") ||
                     type.equalsIgnoreCase("Elevator"))) {
 
-                double liftX = (a.getX() - 1) + 0.5;
-                double liftY = (a.getY() + a.getHoogte() - 2) + 0.5;
-                int minY = a.getY() - 1;
-                int maxY = a.getY() + a.getHoogte() - 2;
+                double liftX = (area.getX() - 1) + 0.5;
+                double liftY = (area.getY() + area.getHoogte() - 2) + 0.5;
+                int minY = area.getY() - 1;
+                int maxY = area.getY() + area.getHoogte() - 2;
 
                 this.lift = new Lift(liftX, liftY, minY, maxY);
+                this.lift.setEventBus(eventBus);  // Set event bus
                 hteClock.addListener(this.lift);
 
                 System.out.println("[Simulator] Lift succesvol geïnitialiseerd.");
-                return;
+                return; // Lift is gevonden en gemaakt, stop de loop
             }
         }
     }
 
+    // Zet startposities en koppelingen (lift, hotel, tick-listener) voor alle personen
     private void initialiseerPersonen() {
-        Area lobbyArea = hotel.getAreas().stream()
-                .filter(a -> a.getAreaType() != null && a.getAreaType().equalsIgnoreCase("Lobby"))
-                .findFirst().orElse(null);
+        Area opslagArea = null;
 
-        Area opslagArea = hotel.getAreas().stream()
-                .filter(a -> a.getAreaType() != null && (a.getAreaType().equalsIgnoreCase("Storage") || a.getAreaType().equalsIgnoreCase("Opslag")))
-                .findFirst().orElse(null);
+        // Zoek eerst handmatig de Lobby en de Opslag (simpele for-loop)
+        for (Area area : hotel.getAreas()) {
+            if (area.getAreaType() != null) {
+                if (area.getAreaType().equalsIgnoreCase("Lobby")) {
+                    this.lobbyArea = area;
+                }
+                if (area.getAreaType().equalsIgnoreCase("Storage") || area.getAreaType().equalsIgnoreCase("Opslag")) {
+                    opslagArea = area;
+                }
+            }
+        }
 
-        // Store lobby reference for dynamic spawning
-        this.lobbyArea = lobbyArea;
-
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof TickListener) {
-                hteClock.addListener((TickListener) p);
+        // Koppel de personen aan de startlocaties en de lift
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof TickListener) {
+                hteClock.addListener(persoon);
             }
 
-            // --- GAST INITIALISATIE ---
-            if (p instanceof Gast) {
-                Gast g = (Gast) p;
-                g.setLift(lift);
-                g.setHotel(hotel);
-                g.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+            // GAST INITIALISATIE
+            if (persoon instanceof Gast gast) {
+                gast.setLift(lift);
+                gast.setHotel(hotel);
+                gast.setEventBus(eventBus);  // Set event bus
+                gast.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
 
                 if (lobbyArea != null) {
-                    // Spawn at x = -1.0 outside the hotel
-                    double startX = -1.0;
+                    double startX = -1.0; // Start net buiten het hotel
                     double startY = (lobbyArea.getY() - 1) + 0.5;
-                    g.setStartPositie(startX, startY);
+                    gast.setStartPositie(startX, startY);
                 }
             }
 
-            // --- SCHOONMAKER INITIALISATIE ---
-            if (p instanceof Schoonmaker) {
-                Schoonmaker s = (Schoonmaker) p;
-                s.setLift(lift);
-                s.setHotel(hotel);
-                s.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+            // SCHOONMAKER INITIALISATIE
+            if (persoon instanceof Schoonmaker schoonmaker) {
+                schoonmaker.setLift(lift);
+                schoonmaker.setHotel(hotel);
+                schoonmaker.setEventBus(eventBus);  // Set event bus
+                schoonmaker.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
 
                 if (opslagArea != null) {
-                    // Keep cleaners in storage (1 grid linksboven van opslag: Position 7, 5)
                     double startX = opslagArea.getX() - 0.5;
                     double startY = opslagArea.getY() - 0.5;
-                    s.setStartPositie(startX, startY);
+                    schoonmaker.setStartPositie(startX, startY);
                 }
             }
         }
     }
 
+    // --- SIMULATIE TICK (LOOP) ---
+
+    // Hoofd loop: wordt iedere tick van de UI timer aangeroepen
+    // Verwerkt klok, verwijdert out-of-bounds personen en regelt automatische checkin/checkout
     public void tick() {
-        if (running && clock.tick()) {
-            hteClock.tick();
-            
-            // Remove only guests that have gone way outside (x < -2)
-            // Guests at x = -1.5 are still outside but can return
-            hotel.getPersonen().removeIf(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0);
-            
-            // Auto-check in waiting guests
-            autoCheckInGuests();
-            
-            // Auto-checkout guests after 300 ticks in room
-            autoCheckoutGuests();
-            
-            // Periodically spawn new guests (every 100 ticks instead of 200)
-            lastGuestSpawnTime++;
-            if (lastGuestSpawnTime >= 100 && hasAvailableRoom()) {
-                spawnNewGuest();
-                lastGuestSpawnTime = 0;
+        if (!running || !clock.tick()) {
+            hotelPanel.repaint();
+            return;
+        }
+
+        hteClock.tick();
+
+        // Verwijder gasten/schoonmakers die ver buiten beeld zijn gelopen
+        hotel.getPersonen().removeIf(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0);
+
+        autoCheckInGuests();
+        autoCheckoutGuests();
+
+        // Voeg periodiek (elke 100 ticks) een nieuwe gast toe als er plek is
+        lastGuestSpawnTime++;
+        if (lastGuestSpawnTime >= 100 && hasAvailableRoom()) {
+            spawnNewGuest();
+            lastGuestSpawnTime = 0;
+        }
+
+        // Random GODZILLA event (per 0,1% per tick)
+        if (Math.random() < 0.001 && eventBus != null) {
+            java.util.List<Persoon> gasten = hotel.getPersonen().stream()
+                .filter(p -> p instanceof Gast)
+                .toList();
+            if (!gasten.isEmpty()) {
+                Persoon randomGast = gasten.get((int)(Math.random() * gasten.size()));
+                eventBus.triggerHotelEvent(HotelEventType.GODZILLA,
+                    randomGast.getNaam().hashCode(), 0);
             }
         }
+
         hotelPanel.repaint();
     }
-    
+
+    // --- GASTEN LOGICA (CHECKIN / CHECKOUT) ---
+
+    // Controleert gasten in de lobby en checkt automatisch in wanneer een vrije kamer gevonden is
     private void autoCheckInGuests() {
-        // Block check-in during fire alarm
+        // Geen check-ins tijdens een brandalarm!
         if (lift != null && lift.isFireAlarmActive()) {
-            return;  // No check-ins during evacuation!
+            return;
         }
-        
+
         try {
-            for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
-                if (p instanceof Gast) {
-                    Gast gast = (Gast) p;
-                    // If guest is in lobby and not checked in yet
+            // Kopie van lijst om errors tijdens het loopen te voorkomen
+            List<Persoon> personenKopie = new ArrayList<>(hotel.getPersonen());
+
+            for (Persoon persoon : personenKopie) {
+                if (persoon instanceof Gast gast) {
+                    // Als de gast in de lobby staat en nog geen kamer heeft
                     if (gast.getHuidigKamer() == null && (int)gast.getY() == 6 && gast.getX() > 1.0) {
-                        // Try to check in to available room
-                        Kamer k = hotel.zoekVrijeKamer("Luxe");
-                        if (k == null) k = hotel.zoekVrijeKamer("Standaard");
-                        if (k == null) k = hotel.zoekVrijeKamer("Budget");
-                        
-                        if (k != null) {
-                            gast.checkinKamer(k);
-                            guestCheckInTime.put(gast.getNaam(), 0);  // Start timer
-                            System.out.println("[AUTO-CHECKIN] " + gast.getNaam() + " checked in to room " + k.getKamernummer());
+
+                        // Zoek een kamer (volgorde van luxe naar budget)
+                        Kamer kamer = hotel.zoekVrijeKamer("Luxe");
+                        if (kamer == null) kamer = hotel.zoekVrijeKamer("Standaard");
+                        if (kamer == null) kamer = hotel.zoekVrijeKamer("Budget");
+
+                        if (kamer != null) {
+                            gast.checkinKamer(kamer);
+                            guestCheckInTime.put(gast.getNaam(), 0); // Start de timer op 0
+                            System.out.println("[AUTO-CHECKIN] " + gast.getNaam() + " ingecheckt in kamer " + kamer.getKamernummer());
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("[autoCheckInGuests] Error: " + e.getMessage());
+            System.err.println("[autoCheckInGuests] Fout: " + e.getMessage());
         }
     }
-    
+
+    // Houdt bij hoe lang gasten in hun kamer zitten en checkt automatisch uit na een tijd
     private void autoCheckoutGuests() {
-        // Block checkout during fire alarm
+        // Geen checkouts tijdens evacuatie!
         if (lift != null && lift.isFireAlarmActive()) {
-            return;  // No checkouts during evacuation!
+            return;
         }
-        
+
         try {
-            for (Persoon p : new ArrayList<>(hotel.getPersonen())) {
-                if (p instanceof Gast) {
-                    Gast gast = (Gast) p;
+            List<Persoon> personenKopie = new ArrayList<>(hotel.getPersonen());
+
+            for (Persoon persoon : personenKopie) {
+                if (persoon instanceof Gast gast) {
                     if (gast.getHuidigKamer() != null && guestCheckInTime.containsKey(gast.getNaam())) {
-                        // Increment stay time
-                        int stayTime = guestCheckInTime.get(gast.getNaam());
-                        stayTime++;
+
+                        // Verhoog de tijd dat de gast in de kamer zit
+                        int stayTime = guestCheckInTime.get(gast.getNaam()) + 1;
                         guestCheckInTime.put(gast.getNaam(), stayTime);
-                        
-                        // Auto-checkout after 300 ticks
+
+                        // Na 300 ticks gaat de gast automatisch uitchecken
                         if (stayTime >= 300) {
                             gast.checkoutKamer();
                             guestCheckInTime.remove(gast.getNaam());
-                            System.out.println("[AUTO-CHECKOUT] " + gast.getNaam() + " checked out");
+                            System.out.println("[AUTO-CHECKOUT] " + gast.getNaam() + " heeft uitgecheckt.");
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("[autoCheckoutGuests] Error: " + e.getMessage());
+            System.err.println("[autoCheckoutGuests] Fout: " + e.getMessage());
         }
     }
-    
+
     private boolean hasAvailableRoom() {
-        for (Kamer k : hotel.getKamers()) {
-            if (k.getStatus() == Kamer.KamerStatus.VRIJ) return true;
+        for (Kamer kamer : hotel.getKamers()) {
+            if (kamer.getStatus() == Kamer.KamerStatus.VRIJ) {
+                return true;
+            }
         }
         return false;
     }
-    
+
+    // Maakt periodiek een nieuwe gast met random naam en type en voegt die aan het hotel toe
     private void spawnNewGuest() {
         if (lobbyArea == null) return;
-        
+
         String[] firstNames = {"Emma", "Liam", "Olivia", "Noah", "Ava", "Elijah", "Sophia", "Mason"};
         String[] types = {"Luxe", "Standaard", "Budget"};
-        
-        String name = firstNames[(int)(Math.random() * firstNames.length)];
-        String type = types[(int)(Math.random() * types.length)];
-        
-        Gast newGuest = new Gast(name, -1, 0);
+
+        String randomName = firstNames[(int)(Math.random() * firstNames.length)];
+        String randomType = types[(int)(Math.random() * types.length)];
+
+        Gast newGuest = new Gast(randomName, -1, 0);
         newGuest.setLift(lift);
         newGuest.setHotel(hotel);
         newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
-        newGuest.setStartPositie(-1.0, (lobbyArea.getY() - 1) + 0.5);
-        
+
+        double startX = -1.0;
+        double startY = (lobbyArea.getY() - 1) + 0.5;
+        newGuest.setStartPositie(startX, startY);
+
         hteClock.addListener(newGuest);
         hotel.addPersoon(newGuest);
-        
-        System.out.println("[Simulator] Nieuwe gast '" + name + "' komt aan (kamertype: " + type + ")");
+
+        System.out.println("[Simulator] Nieuwe gast '" + randomName + "' komt aan (kamertype: " + randomType + ")");
     }
 
-    public void start() { this.running = true; clock.start(); }
-    public void pause() { this.running = false; clock.stop(); }
-    public boolean isRunning() { return running; }
-    public SimulationClock getClock() { return clock; }
-    public Lift getLift() { return lift; }
-    public void resetClock() { this.clock.reset(); }
+    // --- MANUELE CHECKIN / CHECKOUTS ---
 
     public boolean gastCheckin(String naam, String type) {
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof Gast && p.getNaam().equals(naam)) {
-                Kamer k = hotel.zoekVrijeKamer(type);
-                if (k != null) return ((Gast) p).checkinKamer(k);
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof Gast gast && persoon.getNaam().equals(naam)) {
+                Kamer kamer = hotel.zoekVrijeKamer(type);
+                if (kamer != null) {
+                    return gast.checkinKamer(kamer);
+                }
             }
         }
         return false;
     }
 
     public void gastCheckout(String naam) {
-        for (Persoon p : hotel.getPersonen()) {
-            if (p instanceof Gast && p.getNaam().equals(naam)) {
-                ((Gast) p).checkoutKamer();
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon instanceof Gast gast && persoon.getNaam().equals(naam)) {
+                gast.checkoutKamer();
             }
         }
     }
-    
-    /**
-     * Triggers a fire alarm - all personen evacuate to lobby via stairs
-     * US4.3: Brandalarm feature
-     */
+
+    // --- BRANDALARM (US4.3) ---
+
     public void triggerFireAlarm() {
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("🚨 🚨 🚨  FIRE ALARM ACTIVATED - EVACUATIE BEGONNEN  🚨 🚨 🚨");
-        System.out.println("=".repeat(60) + "\n");
-        
-        // Disable lift
+        System.out.println("\n============================================================");
+        System.out.println("🚨 🚨 🚨  BRANDALARM GEACTIVEERD - EVACUATIE BEGONNEN  🚨 🚨 🚨");
+        System.out.println("============================================================\n");
+
         if (lift != null) {
             lift.activeerFireAlarm();
         }
-        
-        // Alert all personen to evacuate
-        for (Persoon p : hotel.getPersonen()) {
-            p.activeerFireAlarm();
+
+        for (Persoon persoon : hotel.getPersonen()) {
+            persoon.activeerFireAlarm();
         }
     }
-    
-    /**
-     * Clears the fire alarm - simulation returns to normal
-     * US4.3: Brandalarm feature
-     */
+
     public void clearFireAlarm() {
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("✓ ✓ ✓  FIRE ALARM CLEARED - EVACUATION COMPLETE  ✓ ✓ ✓");
-        System.out.println("=".repeat(60) + "\n");
-        
-        // Re-enable lift
+        System.out.println("\n============================================================");
+        System.out.println("✓ ✓ ✓  BRANDALARM REPROGMANSEERD - EVACUATIE AFGEROND  ✓ ✓ ✓");
+        System.out.println("============================================================\n");
+
         if (lift != null) {
             lift.deactiveerFireAlarm();
         }
-        
-        // Clear alarm for all personen
-        for (Persoon p : hotel.getPersonen()) {
-            p.deactiveerFireAlarm();
+
+        for (Persoon persoon : hotel.getPersonen()) {
+            persoon.deactiveerFireAlarm();
         }
     }
+
+    // --- GETTERS & SETTERS (ALGEMENE BESTURING) ---
+
+    public void start() { this.running = true; clock.start(); }
+    public void pause() { this.running = false; clock.stop(); }
+    public boolean isRunning() { return running; }
+    public SimulationClock getClock() { return clock; }
+    public Lift getLift() { return lift; }
+    public EventBusImpl getEventBus() { return eventBus; }  // Get event bus for UI/debug
+    public void resetClock() { this.clock.reset(); }
 }

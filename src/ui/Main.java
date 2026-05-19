@@ -2,10 +2,14 @@ package ui;
 
 import model.*;
 import javax.swing.*;
+import javax.swing.WindowConstants;
+import java.awt.Color;
 import java.io.File;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class main {
 
@@ -16,16 +20,17 @@ public class main {
     private static JButton startPauseButton;
     private static Simulator simulator;
     private static Timer simulationTimer;
-    private static GuestListWindow guestListWindow;  // US2.1: Gastenoverzicht
+    private static GuestListWindow guestListWindow;
 
-    // New: Detail windows (cache)
-    private static java.util.HashMap<Object, JFrame> detailWindows = new java.util.HashMap<>();
+    // Venster-caches voor hergebruik per kamer of persoon
+    private static final Map<Kamer, RoomDetailWindow> roomWindows = new HashMap<>();
+    private static final Map<Persoon, PersonDetailWindow> personWindows = new HashMap<>();
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
                 JFrame frame = new JFrame("Hotel Simulator");
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
                 // --- UI SETUP ---
                 JPanel controlPanel = new JPanel();
@@ -33,25 +38,25 @@ public class main {
                 layoutDropdown = new JComboBox<>(layouts);
 
                 JButton loadButton = new JButton("Laden");
-                loadButton.addActionListener(e -> loadLayout());
+                loadButton.addActionListener(_ -> loadLayout());
 
                 startPauseButton = new JButton("Start");
-                startPauseButton.addActionListener(e -> toggleSimulation());
+                startPauseButton.addActionListener(_ -> toggleSimulation());
 
-                // --- FIRE ALARM BUTTON ---
+                // --- FIRE ALARM BUTTONS ---
                 JButton fireAlarmButton = new JButton("🔥 BRANDALARM");
-                fireAlarmButton.setBackground(new java.awt.Color(255, 50, 50));
-                fireAlarmButton.setForeground(java.awt.Color.WHITE);
-                fireAlarmButton.addActionListener(e -> triggerFireAlarm());
+                fireAlarmButton.setBackground(new Color(255, 50, 50));
+                fireAlarmButton.setForeground(Color.WHITE);
+                fireAlarmButton.addActionListener(_ -> triggerFireAlarm());
 
                 JButton clearAlarmButton = new JButton("✓ All Clear");
-                clearAlarmButton.setBackground(new java.awt.Color(50, 200, 50));
-                clearAlarmButton.setForeground(java.awt.Color.WHITE);
-                clearAlarmButton.addActionListener(e -> clearFireAlarm());
+                clearAlarmButton.setBackground(new Color(50, 200, 50));
+                clearAlarmButton.setForeground(Color.WHITE);
+                clearAlarmButton.addActionListener(_ -> clearFireAlarm());
 
                 JLabel speedLabel = new JLabel("Tick Interval: 100ms");
                 JSlider speedSlider = new JSlider(50, 1000, 100);
-                speedSlider.addChangeListener(e -> {
+                speedSlider.addChangeListener(_ -> {
                     int val = speedSlider.getValue();
                     if (simulator != null) simulator.getClock().setTickInterval(val);
                     speedLabel.setText("Tick Interval: " + val + "ms");
@@ -84,7 +89,6 @@ public class main {
                     hotelPanel.setLift(simulator.getLift());
                 }
 
-                // Setup all callbacks (lobby, room, person)
                 setupHotelPanelCallbacks(hotel, hotelPanel);
 
                 frame.add(controlPanel, "North");
@@ -94,10 +98,11 @@ public class main {
                 frame.setVisible(true);
 
                 // --- MAIN LOOP ---
-                simulationTimer = new Timer(50, e -> runTick());
+                simulationTimer = new Timer(50, _ -> runTick());
                 simulationTimer.start();
 
             } catch (Exception e) {
+                System.err.println("Error initializing simulator: " + e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -106,15 +111,9 @@ public class main {
     private static void runTick() {
         if (simulator == null || !simulator.isRunning()) return;
 
-        // Voer de simulator tick uit
         simulator.tick();
-
-        // Update de UI labels
         int timestep = simulator.getClock().getTimestep();
         timestepLabel.setText("Timestep: " + timestep);
-
-        // Optional: Manual test scenarios (most are now automatic)
-        // Auto-checkin and auto-checkout are handled in Simulator now
     }
 
     private static void toggleSimulation() {
@@ -143,7 +142,6 @@ public class main {
 
             if (simulator.getLift() != null) hotelPanel.setLift(simulator.getLift());
 
-            // Setup all callbacks (lobby, room, person)
             setupHotelPanelCallbacks(newHotel, hotelPanel);
 
             startPauseButton.setText("Start");
@@ -170,18 +168,16 @@ public class main {
     }
 
     private static void addTestGuests(Hotel hotel) {
-        // Add more initial test guests - they will spawn at x = -1.0
         String[] namen = {"Alice", "Bob", "Charlie", "Diana", "Frank", "Grace"};
-        for (int i = 0; i < namen.length; i++) {
-            Gast g = new Gast(namen[i], -1, 0);
+        for (String naam : namen) {
+            Gast g = new Gast(naam, -1, 0);
             g.setHotel(hotel);
-            g.setStartPositie(-1.0, 6.5); // Spawn outside at lobby level
+            g.setStartPositie(-1.0, 6.5);
             hotel.addPersoon(g);
         }
     }
 
     private static void addSchoonmakers(Hotel hotel) {
-        // HIER GEFIXED: Ze spawnen nu direct in de Opslag (8, 6)
         Schoonmaker s1 = new Schoonmaker("Schoonmaker1", 8, 6);
         Schoonmaker s2 = new Schoonmaker("Schoonmaker2", 8, 6);
 
@@ -194,16 +190,13 @@ public class main {
 
     private static String[] getAvailableLayouts() {
         File dir = new File("layouts");
-        String[] files = dir.list((d, name) -> name.endsWith(".json"));
+        String[] files = dir.list((_ , n) -> n.endsWith(".json"));
         if (files != null) Arrays.sort(files);
         return (files != null) ? files : new String[0];
     }
 
-    // === FIRE ALARM METHODS (US4.3: Brandalarm) ===
+    // === FIRE ALARM METHODS ===
 
-    /**
-     * Trigger fire alarm - evacuate all people to lobby
-     */
     private static void triggerFireAlarm() {
         if (simulator != null && simulator.isRunning()) {
             System.out.println("\n" + "=".repeat(70));
@@ -217,9 +210,6 @@ public class main {
         }
     }
 
-    /**
-     * Clear fire alarm - resume normal operations
-     */
     private static void clearFireAlarm() {
         if (simulator != null) {
             System.out.println("\n" + "=".repeat(70));
@@ -231,73 +221,45 @@ public class main {
         }
     }
 
-    // === US2.1: GUEST LIST WINDOW METHODS ===
+    // === GUEST LIST WINDOW METHODS ===
 
-    /**
-     * Opent het gastenoverzicht venster
-     * Toont alle gasten met hun huidge status en informatie
-     */
     private static void openGuestListWindow(Hotel hotel) {
         if (guestListWindow != null && guestListWindow.isVisible()) {
-            // Venster is al open - zet het in focus en vernieuw
             guestListWindow.toFront();
             guestListWindow.requestFocus();
         } else {
-            // Maak nieuw venster
             guestListWindow = new GuestListWindow(hotel);
             guestListWindow.setVisible(true);
         }
     }
 
-    // === NEW: DETAIL WINDOW METHODS ===
+    // === DETAIL WINDOW METHODS ===
 
-    /**
-     * Opent kamer-detail window (reuse als al open)
-     */
     private static void openRoomDetailWindow(Kamer kamer) {
-        Object key = kamer;  // Use Kamer object as key
-
-        if (detailWindows.containsKey(key) && detailWindows.get(key).isVisible()) {
-            // Window al open - focus
-            detailWindows.get(key).toFront();
-            detailWindows.get(key).requestFocus();
+        if (roomWindows.containsKey(kamer) && roomWindows.get(kamer).isVisible()) {
+            roomWindows.get(kamer).toFront();
+            roomWindows.get(kamer).requestFocus();
         } else {
-            // Maak nieuw window
             RoomDetailWindow window = new RoomDetailWindow(kamer);
-            detailWindows.put(key, window);
+            roomWindows.put(kamer, window);
             window.setVisible(true);
         }
     }
 
-    /**
-     * Opent persoon-detail window (reuse als al open)
-     */
     private static void openPersonDetailWindow(Persoon persoon) {
-        Object key = persoon;  // Use Persoon object as key
-
-        if (detailWindows.containsKey(key) && detailWindows.get(key).isVisible()) {
-            // Window al open - focus
-            detailWindows.get(key).toFront();
-            detailWindows.get(key).requestFocus();
+        if (personWindows.containsKey(persoon) && personWindows.get(persoon).isVisible()) {
+            personWindows.get(persoon).toFront();
+            personWindows.get(persoon).requestFocus();
         } else {
-            // Maak nieuw window
             PersonDetailWindow window = new PersonDetailWindow(persoon);
-            detailWindows.put(key, window);
+            personWindows.put(persoon, window);
             window.setVisible(true);
         }
     }
 
-    /**
-     * Helpermethod: Stel alle callbacks in voor een hotel + panel combinatie
-     */
     private static void setupHotelPanelCallbacks(Hotel hotel, HotelPanel panel) {
-        // Lobby click
         panel.setOnLobbyClick(() -> openGuestListWindow(hotel));
-
-        // Kamer click
-        panel.setOnRoomClick(kamer -> openRoomDetailWindow(kamer));
-
-        // Persoon click
-        panel.setOnPersonClick(persoon -> openPersonDetailWindow(persoon));
+        panel.setOnRoomClick(main::openRoomDetailWindow);
+        panel.setOnPersonClick(main::openPersonDetailWindow);
     }
 }

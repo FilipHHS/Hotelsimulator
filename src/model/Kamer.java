@@ -7,8 +7,8 @@ public class Kamer {
         BEZET,
         SCHOONMAKEN
     }
-    private int kamernummer; // 101, 102
-    private String type; // "Luxe", "Standaard"
+    private final int kamernummer; // 101, 102
+    private final String type; // "Luxe", "Standaard"
     private KamerStatus status; // Vrij, Bezet, Schoonmaken
     private Area area; // Referentie naar de ruimte van deze kamer
 

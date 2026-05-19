@@ -1,20 +1,25 @@
 package model;
 
+import hotelevents.HotelEvent;
+import hotelevents.HotelEventListener;
+import hotelevents.HotelEventType;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * EventBus - Centraal event management systeem
+ * Integreert HotelEventType en HotelEventListener van school project
  * Events kunnen door de Simulator of andere klasses getriggerd worden
- * Alle TickListeners worden op de hoogte gesteld
  */
-public class EventBusImpl {
-    
-    private List<TickListener> listeners = new ArrayList<>();
-    private List<String> eventLog = new ArrayList<>();
-    
+public class EventBusImpl implements HotelEventListener {
+
+    private final List<TickListener> listeners = new ArrayList<>();
+    private final List<HotelEventListener> hotelListeners = new ArrayList<>();
+    private final List<String> eventLog = new ArrayList<>();
+    private int eventCounter = 0;
+
     /**
-     * Subscribe een listener op alle events
+     * Subscribe een listener op alle events (legacy)
      */
     public void subscribe(TickListener listener) {
         if (!listeners.contains(listener)) {
@@ -24,6 +29,16 @@ public class EventBusImpl {
     }
     
     /**
+     * Subscribe een HotelEventListener
+     */
+    public void registerHotelEventListener(HotelEventListener listener) {
+        if (!hotelListeners.contains(listener)) {
+            hotelListeners.add(listener);
+            logEvent("REGISTER HOTEL LISTENER: " + listener.getClass().getSimpleName());
+        }
+    }
+
+    /**
      * Unsubscribe een listener
      */
     public void unsubscribe(TickListener listener) {
@@ -32,18 +47,111 @@ public class EventBusImpl {
     }
     
     /**
-     * Publish een event naar alle listeners
+     * Deregister een HotelEventListener
+     */
+    public void deregisterHotelEventListener(HotelEventListener listener) {
+        hotelListeners.remove(listener);
+        logEvent("DEREGISTER HOTEL LISTENER: " + listener.getClass().getSimpleName());
+    }
+
+    /**
+     * Publish een event naar alle listeners (legacy string-based)
      */
     public void publishEvent(String eventName, Object data) {
         System.out.println("\n🎬 EVENT PUBLISHED: " + eventName);
         logEvent("EVENT: " + eventName);
         
-        // Notificeer alle listeners
         for (TickListener listener : listeners) {
             System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
         }
     }
     
+    /**
+     * Trigger een HotelEvent met type, guestId, en data
+     */
+    public void triggerHotelEvent(HotelEventType eventType, int guestId, int data) {
+        triggerHotelEvent(eventType, guestId, (int) System.currentTimeMillis(), data);
+    }
+
+    /**
+     * Trigger een HotelEvent met type, guestId, tijd, en data
+     */
+    public void triggerHotelEvent(HotelEventType eventType, int guestId, int time, int data) {
+        eventCounter++;
+        HotelEvent event = new HotelEvent(guestId, eventType, time, data);
+
+        String emoji = getEventEmoji(eventType);
+        System.out.println("\n" + emoji + " HOTEL EVENT TRIGGERED: " + eventType.name());
+        logEvent("HOTEL_EVENT: " + eventType.name() + " (Guest: " + guestId + ", Data: " + data + ")");
+
+        // Notificeer alle hotel event listeners
+        for (HotelEventListener listener : hotelListeners) {
+            System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
+            listener.notify(event);
+        }
+
+        // Ook het centrale systeem notificeren
+        notify(event);
+    }
+
+    /**
+     * HotelEventListener interface - ontvang en verwerk events
+     */
+    @Override
+    public void notify(HotelEvent event) {
+        switch (event.getEventType()) {
+            case CHECK_IN:
+                logEvent("✅ CHECK_IN: Guest " + event.getGuestId() + " checked in");
+                break;
+            case CHECK_OUT:
+                logEvent("🔓 CHECK_OUT: Guest " + event.getGuestId() + " checked out");
+                break;
+            case CLEANING_EMERGENCY:
+                logEvent("🚨 CLEANING_EMERGENCY: Room " + event.getData() + " needs urgent cleaning");
+                break;
+            case EVACUATE:
+                logEvent("🏃 EVACUATE: Emergency evacuation initiated");
+                break;
+            case GODZILLA:
+                logEvent("🦖 GODZILLA: Monster attack! Guest " + event.getGuestId());
+                break;
+            case NEED_FOOD:
+                logEvent("🍽️ NEED_FOOD: Guest " + event.getGuestId() + " wants food");
+                break;
+            case GOTO_CINEMA:
+                logEvent("🎬 GOTO_CINEMA: Guest " + event.getGuestId() + " going to cinema");
+                break;
+            case GOTO_FITNESS:
+                logEvent("💪 GOTO_FITNESS: Guest " + event.getGuestId() + " going to fitness");
+                break;
+            case START_CINEMA:
+                logEvent("🎞️ START_CINEMA: Cinema show starting");
+                break;
+            case NONE:
+            default:
+                logEvent("⚠️ NONE/UNKNOWN: Event type not handled");
+                break;
+        }
+    }
+
+    /**
+     * Get emoji voor event type
+     */
+    private String getEventEmoji(HotelEventType type) {
+        switch (type) {
+            case CHECK_IN: return "✅";
+            case CHECK_OUT: return "🔓";
+            case CLEANING_EMERGENCY: return "🚨";
+            case EVACUATE: return "🏃";
+            case GODZILLA: return "🦖";
+            case NEED_FOOD: return "🍽️";
+            case GOTO_CINEMA: return "🎬";
+            case GOTO_FITNESS: return "💪";
+            case START_CINEMA: return "🎞️";
+            default: return "⚠️";
+        }
+    }
+
     /**
      * Log een event voor debugging
      */
@@ -63,6 +171,13 @@ public class EventBusImpl {
      */
     public void clearEventLog() {
         eventLog.clear();
+    }
+
+    /**
+     * Geef aantal getriggerde events
+     */
+    public int getEventCount() {
+        return eventCounter;
     }
 }
 

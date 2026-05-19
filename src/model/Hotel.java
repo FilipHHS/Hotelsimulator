@@ -11,18 +11,18 @@ import java.util.List;
  */
 public class Hotel {
 
-    private String[][] grid;
-    private int breedte;
-    private int hoogte;
-    private List<Area> areas;
+    private final String[][] grid;
+    private final int breedte;
+    private final int hoogte;
+    private final List<Area> areas;
 
     // ALLE PERSONEN IN SIMULATIE
-    private List<Persoon> personen;
+    private final List<Persoon> personen;
 
-    private List<Kamer> kamers; // Alle kamers in hotel
+    private final List<Kamer> kamers; // Alle kamers in hotel
 
     // --- NIEUW: US3.7 Positie bijhouden ---
-    private Persoon[][] positieGrid;
+    private final Persoon[][] positieGrid;
 
     public Hotel(String[][] grid, int breedte, int hoogte, List<Area> areas) {
         this.grid = grid;
@@ -108,7 +108,7 @@ public class Hotel {
     public void verwijderGast(Persoon gast) {
         if (personen.remove(gast)) {
             System.out.println("[US3.1] Gast '" + gast.getNaam() + "' is uit het hotel vertrokken.");
-            
+
             // Wis ook de positie uit het grid
             for (int i = 0; i < hoogte; i++) {
                 for (int j = 0; j < breedte; j++) {
@@ -128,8 +128,7 @@ public class Hotel {
     public List<Gast> zoekGastenInKamer(Kamer kamer) {
         List<Gast> gastenInKamer = new ArrayList<>();
         for (Persoon p : personen) {
-            if (p instanceof Gast) {
-                Gast gast = (Gast) p;
+            if (p instanceof Gast gast) {
                 if (gast.getHuidigKamer() != null && gast.getHuidigKamer().equals(kamer)) {
                     gastenInKamer.add(gast);
                 }

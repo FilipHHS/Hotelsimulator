@@ -13,7 +13,7 @@ import java.awt.*;
  */
 public class PersonDetailWindow extends JFrame {
 
-    private Persoon persoon;
+    private final Persoon persoon;
 
     public PersonDetailWindow(Persoon persoon) {
         this.persoon = persoon;
@@ -65,8 +65,7 @@ public class PersonDetailWindow extends JFrame {
         addInfoRow(infoPanel, "Positie:", position);
 
         // Extra info voor gasten
-        if (persoon instanceof Gast) {
-            Gast gast = (Gast) persoon;
+        if (persoon instanceof Gast gast) {
 
             // Huidge Kamer
             String kamerInfo = (gast.getHuidigKamer() != null)
@@ -81,8 +80,7 @@ public class PersonDetailWindow extends JFrame {
         }
 
         // Extra info voor schoonmakers
-        if (persoon instanceof Schoonmaker) {
-            Schoonmaker schoonmaker = (Schoonmaker) persoon;
+        if (persoon instanceof Schoonmaker schoonmaker) {
             addInfoRow(infoPanel, "Rol:", "👷 Schoonmaak personeelslid");
         }
 

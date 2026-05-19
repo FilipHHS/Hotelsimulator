@@ -1,5 +1,6 @@
 package model;
 
+import hotelevents.HotelEventType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,24 +8,26 @@ import java.util.Map;
 
 public class Lift implements TickListener {
 
-    private double x, y;
-    private int schachtMinY;
-    private int schachtMaxY;
+    private final double x;
+    private double y;
+    private final int schachtMinY;
+    private final int schachtMaxY;
+    private EventBusImpl eventBus;  // Event system
 
-    private List<Persoon> passagiers;
-    private Map<Persoon, Integer> passengerDestinations;
-    
+    private final List<Persoon> passagiers = new ArrayList<>();
+    private final Map<Persoon, Integer> passengerDestinations = new HashMap<>();
+
     private static final int MAX_CAPACITY = 3;
     private static final double LIFT_SPEED = 0.3;
     private static final int STATION_WAIT_TICKS = 15;
-    
+
     private boolean fireAlarmActive = false;
 
     private enum LiftState { MOVING_UP, MOVING_DOWN, AT_STATION }
     private LiftState state = LiftState.MOVING_UP;
 
     private int currentFloor;
-    private boolean movingUp = true;
+    private boolean movingUp;
     private int stationWaitCounter = 0;
 
     public Lift(double startX, double startY, int schachtMinY, int schachtMaxY) {
@@ -32,31 +35,21 @@ public class Lift implements TickListener {
         this.y = startY;
         this.schachtMinY = schachtMinY;
         this.schachtMaxY = schachtMaxY;
-        this.passagiers = new ArrayList<>();
-        this.passengerDestinations = new HashMap<>();
         this.currentFloor = (int)(startY - 0.5);
         this.movingUp = (startY < (schachtMinY + schachtMaxY) / 2.0 + 0.5);
     }
 
     public void roepNaar(int verdieping) {
-        // Legacy method
+        // Gereserveerd voor toekomstige lift-aanroepen
     }
 
     public boolean voegGastToe(Persoon persoon, int doelVerdieping) {
-        // Reject during fire alarm
-        if (fireAlarmActive) {
+        if (fireAlarmActive || state != LiftState.AT_STATION || passagiers.size() >= MAX_CAPACITY) {
             return false;
         }
-        
-        int persoonFloor = (persoon instanceof Gast) 
-            ? (int)((Gast) persoon).getY() 
-            : (int)((Schoonmaker) persoon).getY();
-        
-        if (Math.abs(persoonFloor - currentFloor) > 0 || state != LiftState.AT_STATION) {
-            return false;
-        }
-        
-        if (passagiers.size() >= MAX_CAPACITY) {
+
+        int persoonFloor = (int) persoon.getY();
+        if (persoonFloor != currentFloor) {
             return false;
         }
 
@@ -80,7 +73,6 @@ public class Lift implements TickListener {
         if (stationWaitCounter > 0) {
             state = LiftState.AT_STATION;
             stationWaitCounter--;
-            
             if (stationWaitCounter == 0) {
                 determineNextFloor();
             }
@@ -97,13 +89,13 @@ public class Lift implements TickListener {
             return;
         }
 
-        if (targetY > y) {
-            state = LiftState.MOVING_UP;
-            y = Math.min(y + LIFT_SPEED, targetY);
-        } else {
-            state = LiftState.MOVING_DOWN;
-            y = Math.max(y - LIFT_SPEED, targetY);
-        }
+        // Beweeg de lift richting de doelverdieping
+        state = (targetY > y) ? LiftState.MOVING_UP : LiftState.MOVING_DOWN;
+        y += Math.signum(targetY - y) * LIFT_SPEED;
+
+        // Zorg dat we niet voorbij het doel schieten
+        if (state == LiftState.MOVING_UP) y = Math.min(y, targetY);
+        else y = Math.max(y, targetY);
     }
 
     private void determineNextFloor() {
@@ -128,28 +120,31 @@ public class Lift implements TickListener {
         }
     }
 
+    public void activeerFireAlarm() {
+        this.fireAlarmActive = true;
+        System.out.println("[Lift] 🔥 FIRE ALARM: Lift buiten werking gesteld!");
+
+        // Trigger EVACUATE event
+        if (eventBus != null) {
+            eventBus.triggerHotelEvent(HotelEventType.EVACUATE, 0, passagiers.size());
+        }
+
+        // Evacueer onmiddellijk alle passagiers
+        new ArrayList<>(passagiers).forEach(this::verwijderGast);
+    }
+
+    public void deactiveerFireAlarm() {
+        this.fireAlarmActive = false;
+        System.out.println("[Lift] ✓ Brandalarm voorbij, lift keert terug naar normaal bedrijf");
+    }
+
+    // --- GETTERS & SETTERS ---
     public double getX() { return x; }
     public double getY() { return y; }
     public int getCurrentFloor() { return currentFloor; }
     public boolean isIdle() { return state == LiftState.AT_STATION; }
+    public boolean isFireAlarmActive() { return fireAlarmActive; }
     public List<Persoon> getPassagiers() { return new ArrayList<>(passagiers); }
     public int getDestination(Persoon p) { return passengerDestinations.getOrDefault(p, -1); }
-    
-    // Fire alarm methods
-    public void activeerFireAlarm() {
-        this.fireAlarmActive = true;
-        System.out.println("[Lift] 🔥 FIRE ALARM: Lift disabled, all passengers being evacuated!");
-        
-        // Immediately eject all passengers to nearest floor
-        for (Persoon p : new ArrayList<>(passagiers)) {
-            verwijderGast(p);
-        }
-    }
-    
-    public void deactiveerFireAlarm() {
-        this.fireAlarmActive = false;
-        System.out.println("[Lift] ✓ Fire alarm cleared, lift returning to normal operation");
-    }
-    
-    public boolean isFireAlarmActive() { return fireAlarmActive; }
+    public void setEventBus(EventBusImpl eventBus) { this.eventBus = eventBus; }
 }

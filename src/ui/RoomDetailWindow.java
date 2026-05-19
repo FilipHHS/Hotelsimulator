@@ -11,7 +11,7 @@ import java.awt.*;
  */
 public class RoomDetailWindow extends JFrame {
 
-    private Kamer kamer;
+    private final Kamer kamer;
 
     public RoomDetailWindow(Kamer kamer) {
         this.kamer = kamer;

@@ -7,9 +7,9 @@ import ui.HotelPanel;
  */
 public class SimulatieEngine {
 
-    private Hotel hotel;
-    private HotelPanel hotelPanel;
-    private SimulationClock clock;
+    private final Hotel hotel;
+    private final HotelPanel hotelPanel;
+    private final SimulationClock clock;
     private boolean running;
 
     // Tick-interval in ms

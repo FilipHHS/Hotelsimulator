@@ -17,7 +17,7 @@ import java.util.List;
  */
 public class GuestListWindow extends JFrame {
     
-    private Hotel hotel;
+    private final Hotel hotel;
     private JTable guestTable;
     private DefaultTableModel tableModel;
     
