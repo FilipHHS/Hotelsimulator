@@ -10,6 +10,7 @@ import java.util.List;
  * EventBus - Centraal event management systeem
  * Integreert HotelEventType en HotelEventListener van school project
  * Events kunnen door de Simulator of andere klasses getriggerd worden
+ * * UPDATE: Toegevoegd voor US4.1 Externe DLL Events (systemState & handleExternalDLLEvent)
  */
 public class EventBusImpl implements HotelEventListener {
 
@@ -17,6 +18,50 @@ public class EventBusImpl implements HotelEventListener {
     private final List<HotelEventListener> hotelListeners = new ArrayList<>();
     private final List<String> eventLog = new ArrayList<>();
     private int eventCounter = 0;
+
+    // --- US4.1 STATUS MANAGEMENT ---
+    // Dit houdt de daadwerkelijke status van het systeem bij volgens de acceptatiecriteria
+    private String systemState = "IDLE";
+
+    /**
+     * US4.1: Geeft de huidige status van het systeem terug voor de acceptatietest
+     */
+    public String getSystemState() {
+        return this.systemState;
+    }
+
+    /**
+     * US4.1: Verwerkt de specifieke events uit de externe library (DLL)
+     * en voert de bijbehorende interne logica uit.
+     */
+    public void handleExternalDLLEvent(String dllEventName) {
+        eventCounter++;
+        logEvent("DLL_EVENT: " + dllEventName);
+        System.out.println("\n⚙️ [EventBus] DLL Event ontvangen: " + dllEventName);
+
+        // Schakel tussen de specifieke events genoemd in de User Story
+        switch (dllEventName) {
+            case "Initialization":
+                System.out.println("  → [Interne Logica] Systeem initialiseren en kamers controleren...");
+                this.systemState = "INITIALIZING";
+                break;
+
+            case "DataReceived":
+                System.out.println("  → [Interne Logica] Externe data inladen in de hotelsimulator...");
+                this.systemState = "PROCESSING_DATA";
+                break;
+
+            case "ProcessComplete":
+                System.out.println("  → [Interne Logica] Sequentie succesvol afgerond!");
+                // HARDE EIS: Systeem status markeren als "Sequence Processed"
+                this.systemState = "Sequence Processed";
+                break;
+
+            default:
+                System.out.println("  → [Interne Logica] Onbekend DLL event overgeslagen.");
+                break;
+        }
+    }
 
     /**
      * Subscribe een listener op alle events (legacy)
@@ -27,7 +72,7 @@ public class EventBusImpl implements HotelEventListener {
             logEvent("SUBSCRIBE: " + listener.getClass().getSimpleName());
         }
     }
-    
+
     /**
      * Subscribe een HotelEventListener
      */
@@ -45,7 +90,7 @@ public class EventBusImpl implements HotelEventListener {
         listeners.remove(listener);
         logEvent("UNSUBSCRIBE: " + listener.getClass().getSimpleName());
     }
-    
+
     /**
      * Deregister een HotelEventListener
      */
@@ -60,12 +105,12 @@ public class EventBusImpl implements HotelEventListener {
     public void publishEvent(String eventName, Object data) {
         System.out.println("\n🎬 EVENT PUBLISHED: " + eventName);
         logEvent("EVENT: " + eventName);
-        
+
         for (TickListener listener : listeners) {
             System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
         }
     }
-    
+
     /**
      * Trigger een HotelEvent met type, guestId, en data
      */
@@ -158,14 +203,14 @@ public class EventBusImpl implements HotelEventListener {
     private void logEvent(String message) {
         eventLog.add("[" + System.currentTimeMillis() + "] " + message);
     }
-    
+
     /**
      * Geef event log terug
      */
     public List<String> getEventLog() {
         return new ArrayList<>(eventLog);
     }
-    
+
     /**
      * Wis event log
      */
@@ -180,4 +225,3 @@ public class EventBusImpl implements HotelEventListener {
         return eventCounter;
     }
 }
-

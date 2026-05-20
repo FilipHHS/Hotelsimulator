@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class main {
+public class Main {
 
     private static HotelPanel hotelPanel;
     private static JComboBox<String> layoutDropdown;
@@ -84,6 +84,21 @@ public class main {
                 hotelPanel = new HotelPanel(hotel);
                 simulator = new Simulator(hotel, hotelPanel);
                 hotelPanel.setEventBus(simulator.getEventBus());
+
+                // ============================================================
+                // ✨ ACTIVATIE US4.1: EXTERNE DLL EVENTS IN DE ECHTE APP ✨
+                // ============================================================
+                System.out.println("\n🚀 [Main] US4.1 Activeren: Externe DLL Provider koppelen...");
+
+                // We pakken de EventBus van de simulator en gieten deze om naar de bruikbare EventBusImpl
+                if (simulator.getEventBus() instanceof EventBusImpl) {
+                    EventBusImpl eventBusImpl = (EventBusImpl) simulator.getEventBus();
+
+                    // Maak de DLL provider aan en start de event-sequentie direct op de achtergrond!
+                    ExternalEventProvider provider = new ExternalEventProvider(eventBusImpl);
+                    provider.start();
+                }
+                // ============================================================
 
                 if (simulator.getLift() != null) {
                     hotelPanel.setLift(simulator.getLift());
@@ -292,7 +307,7 @@ public class main {
 
     private static void setupHotelPanelCallbacks(Hotel hotel, HotelPanel panel) {
         panel.setOnLobbyClick(() -> openGuestListWindow(hotel));
-        panel.setOnRoomClick(main::openRoomDetailWindow);
-        panel.setOnPersonClick(main::openPersonDetailWindow);
+        panel.setOnRoomClick(Main::openRoomDetailWindow);
+        panel.setOnPersonClick(Main::openPersonDetailWindow);
     }
 }
