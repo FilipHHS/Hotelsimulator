@@ -39,9 +39,6 @@ public class Lift implements TickListener {
         this.movingUp = (startY < (schachtMinY + schachtMaxY) / 2.0 + 0.5);
     }
 
-    public void roepNaar(int verdieping) {
-        // Gereserveerd voor toekomstige lift-aanroepen
-    }
 
     public boolean voegGastToe(Persoon persoon, int doelVerdieping) {
         if (fireAlarmActive || state != LiftState.AT_STATION || passagiers.size() >= MAX_CAPACITY) {

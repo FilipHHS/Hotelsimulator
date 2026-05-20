@@ -61,7 +61,6 @@ public class SimulatieEngine {
                 for (Persoon persoon : hotel.getPersonen()) {
                     persoon.onTick(); // elke persoon handelt op de HTE-tick
                 }
-                // TODO: liften en andere events ook updaten op tick
             }
         }
 
