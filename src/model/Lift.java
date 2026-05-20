@@ -17,7 +17,7 @@ public class Lift implements TickListener {
     private final List<Persoon> passagiers = new ArrayList<>();
     private final Map<Persoon, Integer> passengerDestinations = new HashMap<>();
 
-    private static final int MAX_CAPACITY = 3;
+    private static final int MAX_CAPACITY = 100;
     private static final double LIFT_SPEED = 0.3;
     private static final int STATION_WAIT_TICKS = 15;
 

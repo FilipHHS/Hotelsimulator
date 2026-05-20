@@ -16,6 +16,7 @@ import java.util.Map;
     // Control flags and timers
     private boolean running = false;               // Of de simulatie loopt
     private int lastGuestSpawnTime = 0;            // Teller voor automatisch spawnen van gasten
+    private static final int CHECKOUT_NA_TICKS = 600;
 
     // Referenties naar model en UI
     private Hotel hotel;                           // Hotel-model met kamers, areas en personen
@@ -138,10 +139,14 @@ import java.util.Map;
         autoCheckInGuests();
         autoCheckoutGuests();
 
-        // Voeg periodiek (elke 100 ticks) een nieuwe gast toe als er plek is
-        lastGuestSpawnTime++;
-        if (lastGuestSpawnTime >= 100 && hasAvailableRoom()) {
-            spawnNewGuest();
+        // Voeg periodiek een nieuwe gast toe, maar nooit tijdens brandalarm/evacuatie.
+        if (!isEvacuatieActief()) {
+            lastGuestSpawnTime++;
+            if (lastGuestSpawnTime >= 100 && hasAvailableRoom()) {
+                spawnNewGuest();
+                lastGuestSpawnTime = 0;
+            }
+        } else {
             lastGuestSpawnTime = 0;
         }
 
@@ -152,6 +157,9 @@ import java.util.Map;
                 .toList();
             if (!gasten.isEmpty()) {
                 Persoon randomGast = gasten.get((int)(Math.random() * gasten.size()));
+                if (randomGast instanceof Gast gast) {
+                    gast.activeerGodzilla();
+                }
                 eventBus.triggerHotelEvent(HotelEventType.GODZILLA,
                     randomGast.getNaam().hashCode(), 0);
             }
@@ -176,10 +184,11 @@ import java.util.Map;
             for (Persoon persoon : personenKopie) {
                 if (persoon instanceof Gast gast) {
                     // Als de gast in de lobby staat en nog geen kamer heeft
-                    if (gast.getHuidigKamer() == null && (int)gast.getY() == 6 && gast.getX() > 1.0) {
+                    if (gast.getHuidigKamer() == null && isInArea(gast, lobbyArea) && gast.getX() > 1.0) {
 
-                        // Zoek een kamer (volgorde van luxe naar budget)
-                        Kamer kamer = hotel.zoekVrijeKamer("Luxe");
+                        // Zoek een kamer (volgorde van exclusief naar budget)
+                        Kamer kamer = hotel.zoekVrijeKamer("PentHouse");
+                        if (kamer == null) kamer = hotel.zoekVrijeKamer("Luxe");
                         if (kamer == null) kamer = hotel.zoekVrijeKamer("Standaard");
                         if (kamer == null) kamer = hotel.zoekVrijeKamer("Budget");
 
@@ -194,6 +203,20 @@ import java.util.Map;
         } catch (Exception e) {
             System.err.println("[autoCheckInGuests] Fout: " + e.getMessage());
         }
+    }
+
+    private boolean isInArea(Persoon persoon, Area area) {
+        if (area == null) return false;
+
+        double minX = area.getX() - 1;
+        double maxX = minX + area.getBreedte();
+        double minY = area.getY() - 1;
+        double maxY = minY + area.getHoogte();
+
+        return persoon.getX() >= minX
+                && persoon.getX() < maxX
+                && persoon.getY() >= minY
+                && persoon.getY() < maxY;
     }
 
     // Houdt bij hoe lang gasten in hun kamer zitten en checkt automatisch uit na een tijd
@@ -214,8 +237,8 @@ import java.util.Map;
                         int stayTime = guestCheckInTime.get(gast.getNaam()) + 1;
                         guestCheckInTime.put(gast.getNaam(), stayTime);
 
-                        // Na 300 ticks gaat de gast automatisch uitchecken
-                        if (stayTime >= 300) {
+                        // Na een tijdje gaat de gast automatisch uitchecken
+                        if (stayTime >= CHECKOUT_NA_TICKS) {
                             gast.checkoutKamer();
                             guestCheckInTime.remove(gast.getNaam());
                             System.out.println("[AUTO-CHECKOUT] " + gast.getNaam() + " heeft uitgecheckt.");
@@ -237,6 +260,19 @@ import java.util.Map;
         return false;
     }
 
+    private boolean isEvacuatieActief() {
+        if (lift != null && lift.isFireAlarmActive()) {
+            return true;
+        }
+
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (persoon.isFireAlarmActive() || persoon.isEvacuatieBegonnen()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Maakt periodiek een nieuwe gast met random naam en type en voegt die aan het hotel toe
     private void spawnNewGuest() {
         if (lobbyArea == null) return;
@@ -250,6 +286,7 @@ import java.util.Map;
         Gast newGuest = new Gast(randomName, -1, 0);
         newGuest.setLift(lift);
         newGuest.setHotel(hotel);
+        newGuest.setEventBus(eventBus);
         newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
 
         double startX = -1.0;

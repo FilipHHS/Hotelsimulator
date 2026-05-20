@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.io.File;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,13 +46,11 @@ public class main {
 
                 // --- FIRE ALARM BUTTONS ---
                 JButton fireAlarmButton = new JButton("🔥 BRANDALARM");
-                fireAlarmButton.setBackground(new Color(255, 50, 50));
-                fireAlarmButton.setForeground(Color.WHITE);
+                styleAlarmButton(fireAlarmButton, new Color(255, 90, 90));
                 fireAlarmButton.addActionListener(_ -> triggerFireAlarm());
 
                 JButton clearAlarmButton = new JButton("✓ All Clear");
-                clearAlarmButton.setBackground(new Color(50, 200, 50));
-                clearAlarmButton.setForeground(Color.WHITE);
+                styleAlarmButton(clearAlarmButton, new Color(120, 230, 120));
                 clearAlarmButton.addActionListener(_ -> clearFireAlarm());
 
                 JLabel speedLabel = new JLabel("Tick Interval: 100ms");
@@ -84,6 +83,7 @@ public class main {
 
                 hotelPanel = new HotelPanel(hotel);
                 simulator = new Simulator(hotel, hotelPanel);
+                hotelPanel.setEventBus(simulator.getEventBus());
 
                 if (simulator.getLift() != null) {
                     hotelPanel.setLift(simulator.getLift());
@@ -116,6 +116,15 @@ public class main {
         timestepLabel.setText("Timestep: " + timestep);
     }
 
+    private static void styleAlarmButton(JButton button, Color background) {
+        button.setBackground(background);
+        button.setForeground(Color.BLACK);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setBorderPainted(true);
+        button.setFocusPainted(false);
+    }
+
     private static void toggleSimulation() {
         if (!simulator.isRunning()) {
             simulator.start();
@@ -139,6 +148,7 @@ public class main {
 
             hotelPanel.setHotel(newHotel);
             simulator = new Simulator(newHotel, hotelPanel);
+            hotelPanel.setEventBus(simulator.getEventBus());
 
             if (simulator.getLift() != null) hotelPanel.setLift(simulator.getLift());
 
@@ -156,15 +166,38 @@ public class main {
         for (Area a : hotel.getAreas()) {
             if ("Room".equals(a.getAreaType())) roomAreas.add(a);
         }
+        roomAreas.sort(Comparator
+                .comparingInt(Area::getY)
+                .thenComparingInt(Area::getX));
 
-        int[] nummers = {101, 102, 201, 202};
-        String[] types = {"Luxe", "Luxe", "Standaard", "Standaard"};
+        int huidigeVerdieping = -1;
+        int kamerIndex = 0;
+        for (Area roomArea : roomAreas) {
+            if (roomArea.getY() != huidigeVerdieping) {
+                huidigeVerdieping = roomArea.getY();
+                kamerIndex = 1;
+            }
 
-        for (int i = 0; i < nummers.length && i < roomAreas.size(); i++) {
-            Kamer k = new Kamer(nummers[i], types[i]);
-            k.setArea(roomAreas.get(i));
+            int kamernummer = isPentHouse(roomArea) ? 506 : huidigeVerdieping * 100 + kamerIndex;
+            Kamer k = new Kamer(kamernummer, getKamerType(roomArea));
+            k.setArea(roomArea);
             hotel.addKamer(k);
+            kamerIndex++;
         }
+    }
+
+    private static String getKamerType(Area roomArea) {
+        String classification = roomArea.getClassification();
+        if (classification == null) return "Standaard";
+        if (isPentHouse(roomArea)) return "PentHouse";
+        if (classification.contains("5")) return "Luxe";
+        if (classification.contains("3") || classification.contains("4")) return "Standaard";
+        return "Budget";
+    }
+
+    private static boolean isPentHouse(Area roomArea) {
+        return roomArea.getClassification() != null
+                && roomArea.getClassification().equalsIgnoreCase("PentHouse");
     }
 
     private static void addTestGuests(Hotel hotel) {

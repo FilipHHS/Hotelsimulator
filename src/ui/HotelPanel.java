@@ -1,6 +1,7 @@
 package ui;
 
 import model.Area;
+import model.EventBusImpl;
 import model.Hotel;
 import model.Gast;
 import model.Persoon;
@@ -22,7 +23,10 @@ public class HotelPanel extends JPanel implements MouseInputListener {
 
     private Hotel hotel;
     private Lift lift;
+    private EventBusImpl eventBus;
     private final int VAKJE_GROOTTE = 50;
+    private final int EVENT_PANEL_BREEDTE = 240;
+    private final int EVENT_PANEL_GAP = 16;
     private boolean running = true;
 
     // Callbacks voor kliks
@@ -44,6 +48,7 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     }
 
     public void setLift(Lift lift) { this.lift = lift; }
+    public void setEventBus(EventBusImpl eventBus) { this.eventBus = eventBus; }
     public void setRunning(boolean running) { this.running = running; }
     public void setOnLobbyClick(Runnable callback) { this.onLobbyClick = callback; }
     public void setOnRoomClick(Consumer<Kamer> callback) { this.onRoomClick = callback; }
@@ -51,8 +56,8 @@ public class HotelPanel extends JPanel implements MouseInputListener {
 
     private void updateDimensions() {
         if (hotel == null) return;
-        int breedte = hotel.getBreedte() * VAKJE_GROOTTE;
-        int hoogte = hotel.getHoogte() * VAKJE_GROOTTE;
+        int breedte = EVENT_PANEL_BREEDTE + EVENT_PANEL_GAP + hotel.getBreedte() * VAKJE_GROOTTE;
+        int hoogte = Math.max(300, hotel.getHoogte() * VAKJE_GROOTTE);
         this.setPreferredSize(new Dimension(breedte, hoogte));
         revalidate();
     }
@@ -61,9 +66,10 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     private Point getHotelOffset() {
         int hotelBreedte = hotel.getBreedte() * VAKJE_GROOTTE;
         int hotelHoogte = hotel.getHoogte() * VAKJE_GROOTTE;
-        int offsetX = (getWidth() - hotelBreedte) / 2;
+        int totaleBreedte = EVENT_PANEL_BREEDTE + EVENT_PANEL_GAP + hotelBreedte;
+        int offsetX = (getWidth() - totaleBreedte) / 2 + EVENT_PANEL_BREEDTE + EVENT_PANEL_GAP;
         int offsetY = (getHeight() - hotelHoogte) / 2;
-        return new Point(offsetX, offsetY);
+        return new Point(Math.max(EVENT_PANEL_BREEDTE + EVENT_PANEL_GAP, offsetX), offsetY);
     }
 
     // --- TEKEN LOGICA (PAINT) ---
@@ -77,6 +83,7 @@ public class HotelPanel extends JPanel implements MouseInputListener {
         g.fillRect(0, 0, getWidth(), getHeight());
 
         Point offset = getHotelOffset();
+        tekenEventLijst(g, offset.x, offset.y);
         tekenGrid(g, offset.x, offset.y);
         tekenAreas(g, offset.x, offset.y);
         tekenLift(g, offset.x, offset.y);
@@ -91,6 +98,130 @@ public class HotelPanel extends JPanel implements MouseInputListener {
             g.setFont(new Font("Arial", Font.BOLD, 30));
             g.drawString("PAUSED", getWidth() / 2 - 70, getHeight() / 2);
         }
+    }
+
+    private void tekenEventLijst(Graphics g, int hotelOffsetX, int hotelOffsetY) {
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        int panelX = Math.max(10, hotelOffsetX - EVENT_PANEL_GAP - EVENT_PANEL_BREEDTE);
+        int panelY = Math.max(10, hotelOffsetY);
+        int panelHoogte = Math.min(280, Math.max(180, getHeight() - panelY - 20));
+
+        g2.setColor(new Color(250, 250, 250));
+        g2.fillRoundRect(panelX, panelY, EVENT_PANEL_BREEDTE, panelHoogte, 10, 10);
+        g2.setColor(new Color(190, 190, 190));
+        g2.drawRoundRect(panelX, panelY, EVENT_PANEL_BREEDTE, panelHoogte, 10, 10);
+
+        g2.setColor(new Color(30, 30, 30));
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.drawString("Gestarte events", panelX + 12, panelY + 24);
+
+        g2.setFont(new Font("Arial", Font.PLAIN, 11));
+        List<String> events = getGestarteEvents();
+        if (events.isEmpty()) {
+            g2.setColor(new Color(110, 110, 110));
+            g2.drawString("Nog geen events gestart", panelX + 12, panelY + 52);
+            g2.dispose();
+            return;
+        }
+
+        int y = panelY + 52;
+        int maxY = panelY + panelHoogte - 12;
+        for (String event : events) {
+            if (y > maxY) break;
+            if (event.startsWith("GODZILLA")) {
+                g2.setColor(new Color(190, 35, 35));
+                g2.setFont(new Font("Arial", Font.BOLD, 11));
+            } else {
+                g2.setColor(new Color(40, 40, 40));
+                g2.setFont(new Font("Arial", Font.PLAIN, 11));
+            }
+            g2.drawString("• " + event, panelX + 12, y);
+            y += 18;
+        }
+
+        g2.dispose();
+    }
+
+    private List<String> getGestarteEvents() {
+        if (eventBus == null) {
+            return List.of();
+        }
+
+        List<String> logs = eventBus.getEventLog();
+        java.util.ArrayList<String> events = new java.util.ArrayList<>();
+        for (String log : logs) {
+            if (log.contains("HOTEL_EVENT:")) {
+                events.add(maakEventLabel(log));
+            }
+        }
+
+        int start = Math.max(0, events.size() - 10);
+        return events.subList(start, events.size());
+    }
+
+    private String maakEventLabel(String log) {
+        int start = log.indexOf("HOTEL_EVENT:");
+        String eventDetails = log.substring(start + "HOTEL_EVENT:".length()).trim();
+        String eventType = eventDetails.split(" ", 2)[0];
+        String guestName = zoekGastNaam(eventDetails);
+        String data = haalWaardeOp(eventDetails, "Data: ", ")");
+
+        String label = switch (eventType) {
+            case "CHECK_IN" -> guestName + " checkt in" + kamerTekst(data);
+            case "CHECK_OUT" -> guestName + " checkt uit" + kamerTekst(data);
+            case "CLEANING_EMERGENCY" -> "Schoonmaak spoed kamer " + data;
+            case "EVACUATE" -> "Evacuatie gestart";
+            case "GODZILLA" -> "GODZILLA bij " + guestName + "!";
+            case "NEED_FOOD" -> guestName + " wil eten";
+            case "GOTO_CINEMA" -> guestName + " naar bioscoop";
+            case "GOTO_FITNESS" -> guestName + " naar fitness";
+            case "START_CINEMA" -> "Bioscoop start";
+            default -> eventType;
+        };
+
+        FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, 11));
+        int maxBreedte = EVENT_PANEL_BREEDTE - 34;
+        while (fm.stringWidth(label) > maxBreedte && label.length() > 4) {
+            label = label.substring(0, label.length() - 4) + "...";
+        }
+        return label;
+    }
+
+    private String zoekGastNaam(String eventDetails) {
+        String guestId = haalWaardeOp(eventDetails, "Guest: ", ",");
+        if (guestId == null || "0".equals(guestId)) {
+            return "iedereen";
+        }
+
+        for (Persoon persoon : hotel.getPersonen()) {
+            if (String.valueOf(persoon.getNaam().hashCode()).equals(guestId)) {
+                return persoon.getNaam();
+            }
+        }
+
+        return "onbekende gast";
+    }
+
+    private String haalWaardeOp(String tekst, String prefix, String eindTeken) {
+        int start = tekst.indexOf(prefix);
+        if (start < 0) {
+            return null;
+        }
+
+        start += prefix.length();
+        int einde = tekst.indexOf(eindTeken, start);
+        if (einde < 0) {
+            einde = tekst.length();
+        }
+        return tekst.substring(start, einde).trim();
+    }
+
+    private String kamerTekst(String data) {
+        if (data == null || "0".equals(data)) {
+            return "";
+        }
+        return " kamer " + data;
     }
 
     private void tekenGrid(Graphics g, int offsetX, int offsetY) {
@@ -164,15 +295,27 @@ public class HotelPanel extends JPanel implements MouseInputListener {
             int py = (int)(persoon.getY() * VAKJE_GROOTTE) + offsetY - 8;
 
             if (persoon instanceof Gast gast) {
+                int diameter = gast.isGodzillaActive() ? 40 : 16;
+                int drawX = (int)(persoon.getX() * VAKJE_GROOTTE) + offsetX - diameter / 2;
+                int drawY = (int)(persoon.getY() * VAKJE_GROOTTE) + offsetY - diameter / 2;
+
                 g.setColor(gast.getKleur());
-                g.fillOval(px, py, 16, 16);
+                g.fillOval(drawX, drawY, diameter, diameter);
                 g.setColor(Color.BLACK);
-                g.drawOval(px, py, 16, 16);
+                g.drawOval(drawX, drawY, diameter, diameter);
+
+                if (gast.isGodzillaActive()) {
+                    Graphics2D g2 = (Graphics2D) g;
+                    g2.setStroke(new BasicStroke(3));
+                    g.setColor(new Color(190, 35, 35));
+                    g.drawOval(drawX - 3, drawY - 3, diameter + 6, diameter + 6);
+                    g2.setStroke(new BasicStroke(1));
+                }
 
                 // Label boven gast
                 g.setFont(new Font("Arial", Font.BOLD, 9));
-                String label = gast.getNaam() + (gast.getHuidigeActiviteit().isEmpty() ? "" : " " + gast.getHuidigeActiviteit());
-                g.drawString(label, px - 5, py - 5);
+                g.setColor(Color.BLACK);
+                g.drawString(gast.getNaam(), drawX - 2, drawY - 5);
 
             } else if (persoon instanceof Schoonmaker schoonmaker) {
                 g.setColor(schoonmaker.getKleur());
@@ -185,8 +328,7 @@ public class HotelPanel extends JPanel implements MouseInputListener {
 
                 // Label boven schoonmaker
                 g.setFont(new Font("Arial", Font.PLAIN, 8));
-                String label = "CM" + (schoonmaker.getHuidigeActiviteit().isEmpty() ? "" : " " + schoonmaker.getHuidigeActiviteit());
-                g.drawString(label, px - 5, py - 3);
+                g.drawString(schoonmaker.getNaam(), px - 5, py - 3);
             }
         }
     }
@@ -227,8 +369,10 @@ public class HotelPanel extends JPanel implements MouseInputListener {
         int clickY = e.getY();
         Point offset = getHotelOffset();
 
-        // 1. Check personen (Hoogste prioriteit)
-        for (Persoon persoon : hotel.getPersonen()) {
+        // 1. Check personen (Hoogste prioriteit). Laatst getekende personen liggen visueel bovenop.
+        List<Persoon> personen = hotel.getPersonen();
+        for (int i = personen.size() - 1; i >= 0; i--) {
+            Persoon persoon = personen.get(i);
             if (isKlikOpPersoon(persoon, clickX, clickY, offset.x, offset.y)) {
                 System.out.println("[Click] 👤 Persoon aangeklikt: " + persoon.getNaam());
                 if (onPersonClick != null) onPersonClick.accept(persoon);
@@ -262,15 +406,23 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     private boolean isKlikOpPersoon(Persoon persoon, int clickX, int clickY, int offsetX, int offsetY) {
         int px = (int)(persoon.getX() * VAKJE_GROOTTE) + offsetX - 8;
         int py = (int)(persoon.getY() * VAKJE_GROOTTE) + offsetY - 8;
+        int labelBreedte = getFontMetrics(new Font("Arial", Font.BOLD, 9)).stringWidth(persoon.getNaam());
+
+        boolean klikOpNaam = clickX >= px - 5
+                && clickX <= px - 5 + labelBreedte
+                && clickY >= py - 18
+                && clickY <= py - 3;
 
         if (persoon instanceof Gast) {
             int centerX = px + 8;
             int centerY = py + 8;
             double afstand = Math.sqrt(Math.pow(clickX - centerX, 2) + Math.pow(clickY - centerY, 2));
-            return afstand <= 10;
+            int klikRadius = persoon instanceof Gast gast && gast.isGodzillaActive() ? 26 : 16;
+            return afstand <= klikRadius || klikOpNaam;
         }
         if (persoon instanceof Schoonmaker) {
-            return clickX >= px && clickX <= px + 16 && clickY >= py && clickY <= py + 16;
+            boolean klikOpBlok = clickX >= px - 4 && clickX <= px + 20 && clickY >= py - 4 && clickY <= py + 20;
+            return klikOpBlok || klikOpNaam;
         }
         return false;
     }
@@ -288,7 +440,7 @@ public class HotelPanel extends JPanel implements MouseInputListener {
 
     private String getLabel(Area area) {
         return switch (area.getAreaType()) {
-            case "Room" -> area.getClassification() != null ? area.getClassification().replace(" Star", "★") : "Kamer";
+            case "Room" -> getKamerLabel(area);
             case "Cinema" -> "Bioscoop";
             case "Restaurant" -> "Restaurant";
             case "Fitness" -> "Fitness";
@@ -301,11 +453,21 @@ public class HotelPanel extends JPanel implements MouseInputListener {
         };
     }
 
+    private String getKamerLabel(Area area) {
+        for (Kamer kamer : hotel.getKamers()) {
+            if (kamer.getArea() == area || (kamer.getArea() != null && kamer.getArea().equals(area))) {
+                return String.valueOf(kamer.getKamernummer());
+            }
+        }
+        return "Kamer";
+    }
+
     private Color getKleur(Area area) {
         return switch (area.getAreaType()) {
             case "Room" -> {
                 String c = area.getClassification();
                 if (c == null) yield new Color(200, 230, 255);
+                if (c.equalsIgnoreCase("PentHouse")) yield new Color(120, 0, 0);
                 if (c.contains("1")) yield new Color(200, 230, 255);
                 if (c.contains("2")) yield new Color(150, 200, 255);
                 if (c.contains("3")) yield new Color(100, 170, 255);

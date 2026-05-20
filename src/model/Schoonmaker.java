@@ -4,7 +4,7 @@ import hotelevents.HotelEventType;
 import java.awt.Color;
 
 public class Schoonmaker extends Persoon {
-    private static final double SPEED = 0.15;
+    private static final double SPEED = 0.5;
     private static final double LIFT_X = 1.5;
     private static final int SCHOONMAAK_DUUR = 100;
 
@@ -17,7 +17,7 @@ public class Schoonmaker extends Persoon {
     private int doelVerdieping;
     private int maxY = 6;
 
-    private enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT, EVACUATIE }
+    private enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT, EVACUATIE, BUITEN }
     private State state = State.VRIJ;
 
     public Schoonmaker(String naam, int startX, int startY) {
@@ -43,13 +43,17 @@ public class Schoonmaker extends Persoon {
 
         // 2. Brandalarm is weer voorbij: ga terug naar de opslag
         if (!fireAlarmActive && evacuatieBegonnen) {
-            if (state == State.EVACUATIE) {
+            if (state == State.EVACUATIE || state == State.BUITEN) {
                 evacuatieBegonnen = false;
                 state = State.VRIJ;
                 setHuidigeActiviteit("⏳ Idle");
                 x = 7.5;
                 y = 5.5;
             }
+        }
+
+        if (fireAlarmActive && state == State.BUITEN) {
+            return;
         }
 
         // 3. Liftbeweging afhandelen
@@ -85,8 +89,8 @@ public class Schoonmaker extends Persoon {
         }
 
         // Wel een vieze kamer gevonden! Bepaal het doel
-        double targetX = viezeKamer.getArea().getX() + 0.5;
-        double targetY = viezeKamer.getArea().getY() + 0.5;
+        double targetX = getAreaCenterX(viezeKamer.getArea());
+        double targetY = getAreaCenterY(viezeKamer.getArea());
 
         if (state == State.SCHOONMAKEN) {
             werkAanKamer();
@@ -107,6 +111,7 @@ public class Schoonmaker extends Persoon {
             case SCHOONMAKEN -> setHuidigeActiviteit("🧹 Schoonmaken");
             case IN_LIFT -> setHuidigeActiviteit("🛗 In Lift");
             case EVACUATIE -> setHuidigeActiviteit("🔥 EVACUATIE!");
+            case BUITEN -> setHuidigeActiviteit("👋 Buiten hotel");
             default -> setHuidigeActiviteit("");
         }
     }
@@ -147,6 +152,14 @@ public class Schoonmaker extends Persoon {
                 }
             }
         }
+    }
+
+    private double getAreaCenterX(Area area) {
+        return area.getX() - 1 + area.getBreedte() / 2.0;
+    }
+
+    private double getAreaCenterY(Area area) {
+        return area.getY() - 1 + area.getHoogte() / 2.0;
     }
 
     private void werkAanKamer() {
@@ -230,7 +243,7 @@ public class Schoonmaker extends Persoon {
             double dx = lobbyX - x;
             if (Math.abs(dx) < SPEED) {
                 x = -1.5; // Loop naar buiten het gebouw
-                state = State.VRIJ;
+                state = State.BUITEN;
                 setHuidigeActiviteit("👋 Verlaten gebouw");
             } else {
                 x += (dx > 0) ? SPEED : -SPEED;

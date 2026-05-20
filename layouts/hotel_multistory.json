@@ -176,16 +176,10 @@
     "Dimension": "1, 1"
   },
   {
-    "Classification": "4 Star",
+    "Classification": "PentHouse",
     "AreaType": "Room",
     "Position": "7, 4",
-    "Dimension": "1, 1"
-  },
-  {
-    "Classification": "4 Star",
-    "AreaType": "Room",
-    "Position": "8, 4",
-    "Dimension": "1, 1"
+    "Dimension": "2, 2"
   },
   {
     "Classification": "5 Star",
@@ -218,18 +212,6 @@
     "Dimension": "1, 1"
   },
   {
-    "Classification": "5 Star",
-    "AreaType": "Room",
-    "Position": "7, 5",
-    "Dimension": "1, 1"
-  },
-  {
-    "Classification": "5 Star",
-    "AreaType": "Room",
-    "Position": "8, 5",
-    "Dimension": "1, 1"
-  },
-  {
     "AreaType": "Restaurant",
     "Capacity": 12,
     "Position": "2, 6",
@@ -251,8 +233,6 @@
     "Dimension": "7, 1"
   }
 ]
-
-
 
 
 

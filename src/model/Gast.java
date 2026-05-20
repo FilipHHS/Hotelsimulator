@@ -7,8 +7,11 @@ import java.util.Random;
 public class Gast extends Persoon {
     private static final Random RANDOM = new Random();
     private static final double SPEED = 0.5;
+    private static final double GODZILLA_SPEED_MULTIPLIER = 3.0;
+    private static final int GODZILLA_DURATION_TICKS = 250;
     private static final double LIFT_WAIT_X = 1.5;
     private static final double TRAP_X = 8.5;
+    private static final int LOUNGE_CHILL_TICKS = 20;
 
     private int maxX, maxY;
     private Hotel hotel;
@@ -24,6 +27,10 @@ public class Gast extends Persoon {
     private double faciliteitX, faciliteitY;
     private int faciliteitsBezoekDuur = 0;
     private String huidigerFaciliteitType = null;
+    private int loungeStayTicks = 0;
+    private double vorigeX = Double.NaN;
+    private double vorigeY = Double.NaN;
+    private int godzillaTicksRemaining = 0;
 
     private enum State {
         WANDELEN, NAAR_LIFT_WACHTEN, WACHTEN_OP_VERVOER, IN_LIFT,
@@ -42,11 +49,13 @@ public class Gast extends Persoon {
 
     @Override
     public void onTick() {
-        updateActiviteitLabel();
-
         // 1. Brandalarm activeren
         if (fireAlarmActive && !evacuatieBegonnen) {
             startEvacuatie();
+        }
+
+        if (godzillaTicksRemaining > 0) {
+            godzillaTicksRemaining--;
         }
 
         // 2. Brandalarm voorbij: reset naar de lobby en ga weer normaal wandelen
@@ -78,18 +87,30 @@ public class Gast extends Persoon {
                 case EVACUATIE -> beweegNaarLobbyDirect();
             }
         }
+
+        updateLoungeStayTicks();
+        updateActiviteitLabel();
     }
 
     private void updateActiviteitLabel() {
         if (inLift) {
-            setHuidigeActiviteit("🛗 In Lift");
+            if (lift != null && lift.isIdle()) {
+                setHuidigeActiviteit("⏳ Wachten in lift");
+            } else {
+                setHuidigeActiviteit("🛗 In lift");
+            }
+            return;
+        }
+
+        if (isGodzillaActive() && state != State.EVACUATIE && state != State.VERLAAT_HOTEL) {
+            setHuidigeActiviteit("GODZILLA!");
             return;
         }
 
         switch (state) {
-            case WANDELEN -> setHuidigeActiviteit(huidigKamer != null ? "🛏️ Chill" : "🚶 Wandel");
+            case WANDELEN -> setHuidigeActiviteit(loungeStayTicks >= LOUNGE_CHILL_TICKS ? "🛋️ Chill" : "🚶 Wandel");
             case NAAR_LIFT_WACHTEN -> setHuidigeActiviteit("⏳ Wacht Lift");
-            case WACHTEN_OP_VERVOER -> setHuidigeActiviteit("⏳ Vervoer");
+            case WACHTEN_OP_VERVOER -> setHuidigeActiviteit("⏳ Wachten op lift");
             case GAAT_NAAR_FACILITEIT -> setHuidigeActiviteit("🚶 > Faciliteit");
             case GAAT_NAAR_KAMER -> setHuidigeActiviteit("✓ Check-in");
             case GAAT_NAAR_LOBBY -> setHuidigeActiviteit("✗ Check-out");
@@ -109,6 +130,40 @@ public class Gast extends Persoon {
         }
     }
 
+    private void updateLoungeStayTicks() {
+        boolean inLounge = isInAreaType("Lounge");
+        boolean staatStil = !Double.isNaN(vorigeX)
+                && Math.abs(x - vorigeX) < 0.01
+                && Math.abs(y - vorigeY) < 0.01;
+
+        if (state == State.WANDELEN && inLounge && staatStil) {
+            loungeStayTicks++;
+        } else if (!inLounge || !staatStil) {
+            loungeStayTicks = 0;
+        }
+
+        vorigeX = x;
+        vorigeY = y;
+    }
+
+    private boolean isInAreaType(String areaType) {
+        if (hotel == null) return false;
+
+        for (Area area : hotel.getAreas()) {
+            if (!areaType.equals(area.getAreaType())) continue;
+
+            double minX = area.getX() - 1;
+            double maxX = minX + area.getBreedte();
+            double minY = area.getY() - 1;
+            double maxY = minY + area.getHoogte();
+
+            if (x >= minX && x < maxX && y >= minY && y < maxY) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void handleLiftLogic() {
         if (lift != null) {
             this.x = lift.getX();
@@ -123,6 +178,14 @@ public class Gast extends Persoon {
                 this.state = State.WANDELEN;
             }
         }
+    }
+
+    private double getAreaCenterX(Area area) {
+        return area.getX() - 1 + area.getBreedte() / 2.0;
+    }
+
+    private double getAreaCenterY(Area area) {
+        return area.getY() - 1 + area.getHoogte() / 2.0;
     }
 
     private void randomWalk() {
@@ -144,21 +207,23 @@ public class Gast extends Persoon {
             maxStapsRichting = RANDOM.nextInt(3) + 2;
         }
 
+        double speed = getSpeed();
         double dx = destX - x;
-        if (Math.abs(dx) < SPEED) x = destX;
-        else x += (dx > 0 ? SPEED : -SPEED);
+        if (Math.abs(dx) < speed) x = destX;
+        else x += (dx > 0 ? speed : -speed);
 
         stapsInRichting++;
         if (RANDOM.nextDouble() < 0.02) wiltVerdiepingWisselen();
     }
 
     private void beweegNaarLiftTrap() {
+        double speed = getSpeed();
         double dx = destX - x;
-        if (Math.abs(dx) < SPEED) {
+        if (Math.abs(dx) < speed) {
             x = destX;
             this.state = State.WACHTEN_OP_VERVOER;
         } else {
-            x += (dx > 0) ? SPEED : -SPEED;
+            x += (dx > 0) ? speed : -speed;
         }
     }
 
@@ -219,13 +284,14 @@ public class Gast extends Persoon {
     }
 
     private void beweegNaarFaciliteit() {
+        double speed = getSpeed();
         double dx = faciliteitX - x;
-        if (Math.abs(dx) < SPEED) {
+        if (Math.abs(dx) < speed) {
             x = faciliteitX;
             this.state = State.IN_FACILITEIT;
             this.faciliteitsBezoekDuur = 20 + RANDOM.nextInt(30);
         } else {
-            x += (dx > 0) ? SPEED : -SPEED;
+            x += (dx > 0) ? speed : -speed;
         }
     }
 
@@ -233,14 +299,15 @@ public class Gast extends Persoon {
         if ((int)y != doelVerdieping) {
             wiltVerdiepingWisselen();
         } else {
+            double speed = getSpeed();
             double dx = destX - x;
-            if (Math.abs(dx) < SPEED) {
+            if (Math.abs(dx) < speed) {
                 x = destX;
                 this.y = doelVerdieping + 0.5;
                 this.state = State.WANDELEN;
-                this.roomStayTimer = 100 + RANDOM.nextInt(200); // Blijf 100-300 ticks in kamer
+                this.roomStayTimer = 300 + RANDOM.nextInt(300); // Blijf 300-600 ticks in kamer
             } else {
-                x += (dx > 0) ? SPEED : -SPEED;
+                x += (dx > 0) ? speed : -speed;
             }
         }
     }
@@ -258,33 +325,35 @@ public class Gast extends Persoon {
         if ((int)y != lobbyY) {
             wiltVerdiepingWisselen();
         } else {
+            double speed = getSpeed();
             double lobbyX = 1.5;
             double dx = lobbyX - x;
-            if (Math.abs(dx) < SPEED) {
+            if (Math.abs(dx) < speed) {
                 x = lobbyX;
                 this.state = State.VERLAAT_HOTEL;
             } else {
-                x += (dx > 0) ? SPEED : -SPEED;
+                x += (dx > 0) ? speed : -speed;
             }
         }
     }
 
     private void beweegNaarExit() {
+        double speed = getSpeed();
         double exitX = -1.5;
         double dx = exitX - x;
-        if (Math.abs(dx) < SPEED) {
+        if (Math.abs(dx) < speed) {
             x = exitX;
             setHuidigeActiviteit("👋 Buiten hotel");
         } else {
-            x -= SPEED;
+            x -= speed;
         }
     }
 
     public boolean checkinKamer(Kamer k) {
         this.huidigKamer = k;
         k.setStatus(Kamer.KamerStatus.BEZET);
-        this.destX = k.getArea().getX() + 0.5;
-        this.doelVerdieping = k.getArea().getY();
+        this.destX = getAreaCenterX(k.getArea());
+        this.doelVerdieping = k.getArea().getY() - 1;
         this.state = State.GAAT_NAAR_KAMER;
 
         // Trigger CHECK_IN event
@@ -338,23 +407,44 @@ public class Gast extends Persoon {
 
         // Stap 1: Loop naar de trap toe als we nog op een verdieping zitten
         if ((int)y != lobbyY) {
-            if (Math.abs(x - stairX) > SPEED) {
-                x += (x < stairX) ? SPEED : -SPEED;
+            double speed = getSpeed();
+            if (Math.abs(x - stairX) > speed) {
+                x += (x < stairX) ? speed : -speed;
             } else {
                 // Beweeg verticaal via de trappen naar de lobby-verdieping
-                y += (y < lobbyY) ? SPEED : -SPEED;
+                y += (y < lobbyY) ? speed : -speed;
             }
         } else {
             // Stap 2: Eenmaal in de lobby, loop door naar de uitgang
+            double speed = getSpeed();
             double dx = lobbyX - x;
-            if (Math.abs(dx) < SPEED) {
+            if (Math.abs(dx) < speed) {
                 x = lobbyX;
                 this.state = State.VERLAAT_HOTEL;
                 setHuidigeActiviteit("👋 Verlaat Hotel");
             } else {
-                x += (dx > 0) ? SPEED : -SPEED;
+                x += (dx > 0) ? speed : -speed;
             }
         }
+    }
+
+    public void activeerGodzilla() {
+        this.godzillaTicksRemaining = GODZILLA_DURATION_TICKS;
+        this.roomStayTimer = 0;
+        this.faciliteitsBezoekDuur = 0;
+        if (state == State.IN_FACILITEIT) {
+            state = State.WANDELEN;
+            huidigerFaciliteitType = null;
+        }
+        setHuidigeActiviteit("GODZILLA!");
+    }
+
+    public boolean isGodzillaActive() {
+        return godzillaTicksRemaining > 0;
+    }
+
+    private double getSpeed() {
+        return isGodzillaActive() ? SPEED * GODZILLA_SPEED_MULTIPLIER : SPEED;
     }
 
     // --- SETTERS & GETTERS ---
