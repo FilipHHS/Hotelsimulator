@@ -17,6 +17,7 @@ public class EventBusImpl implements HotelEventListener {
     private final List<TickListener> listeners = new ArrayList<>();
     private final List<HotelEventListener> hotelListeners = new ArrayList<>();
     private final List<String> eventLog = new ArrayList<>();
+    private final List<String> errorLog = new ArrayList<>();
     private int eventCounter = 0;
 
     // --- US4.1 STATUS MANAGEMENT ---
@@ -33,33 +34,48 @@ public class EventBusImpl implements HotelEventListener {
     /**
      * US4.1: Verwerkt de specifieke events uit de externe library (DLL)
      * en voert de bijbehorende interne logica uit.
+     * US4.2.A: Robuuste foutafhandeling voor null/corrupte data
      */
     public void handleExternalDLLEvent(String dllEventName) {
-        eventCounter++;
-        logEvent("DLL_EVENT: " + dllEventName);
-        System.out.println("\n⚙️ [EventBus] DLL Event ontvangen: " + dllEventName);
+        try {
+            // NULL check
+            if (dllEventName == null || dllEventName.trim().isEmpty()) {
+                String errorMsg = "⚠️ [EventBus] NULL/EMPTY event ontvangen van DLL";
+                System.err.println(errorMsg);
+                logError(errorMsg);
+                return;
+            }
 
-        // Schakel tussen de specifieke events genoemd in de User Story
-        switch (dllEventName) {
-            case "Initialization":
-                System.out.println("  → [Interne Logica] Systeem initialiseren en kamers controleren...");
-                this.systemState = "INITIALIZING";
-                break;
+            eventCounter++;
+            logEvent("DLL_EVENT: " + dllEventName);
+            System.out.println("\n⚙️ [EventBus] DLL Event ontvangen: " + dllEventName);
 
-            case "DataReceived":
-                System.out.println("  → [Interne Logica] Externe data inladen in de hotelsimulator...");
-                this.systemState = "PROCESSING_DATA";
-                break;
+            // Schakel tussen de specifieke events genoemd in de User Story
+            switch (dllEventName) {
+                case "Initialization":
+                    System.out.println("  → [Interne Logica] Systeem initialiseren en kamers controleren...");
+                    this.systemState = "INITIALIZING";
+                    break;
 
-            case "ProcessComplete":
-                System.out.println("  → [Interne Logica] Sequentie succesvol afgerond!");
-                // HARDE EIS: Systeem status markeren als "Sequence Processed"
-                this.systemState = "Sequence Processed";
-                break;
+                case "DataReceived":
+                    System.out.println("  → [Interne Logica] Externe data inladen in de hotelsimulator...");
+                    this.systemState = "PROCESSING_DATA";
+                    break;
 
-            default:
-                System.out.println("  → [Interne Logica] Onbekend DLL event overgeslagen.");
-                break;
+                case "ProcessComplete":
+                    System.out.println("  → [Interne Logica] Sequentie succesvol afgerond!");
+                    // HARDE EIS: Systeem status markeren als "Sequence Processed"
+                    this.systemState = "Sequence Processed";
+                    break;
+
+                default:
+                    System.out.println("  → [Interne Logica] Onbekend DLL event overgeslagen.");
+                    break;
+            }
+        } catch (Exception e) {
+            String errorMsg = "❌ Exception in handleExternalDLLEvent: " + e.getMessage();
+            System.err.println(errorMsg);
+            logError(errorMsg);
         }
     }
 
@@ -113,6 +129,7 @@ public class EventBusImpl implements HotelEventListener {
 
     /**
      * Trigger een HotelEvent met type, guestId, en data
+     * US4.2.A: Exception handling
      */
     public void triggerHotelEvent(HotelEventType eventType, int guestId, int data) {
         triggerHotelEvent(eventType, guestId, (int) System.currentTimeMillis(), data);
@@ -120,62 +137,106 @@ public class EventBusImpl implements HotelEventListener {
 
     /**
      * Trigger een HotelEvent met type, guestId, tijd, en data
+     * US4.2.A: Robuuste foutafhandeling
      */
     public void triggerHotelEvent(HotelEventType eventType, int guestId, int time, int data) {
-        eventCounter++;
-        HotelEvent event = new HotelEvent(guestId, eventType, time, data);
+        try {
+            // NULL check
+            if (eventType == null) {
+                String errorMsg = "⚠️ [EventBus] NULL event type bij triggerHotelEvent";
+                System.err.println(errorMsg);
+                logError(errorMsg);
+                return;
+            }
 
-        String emoji = getEventEmoji(eventType);
-        System.out.println("\n" + emoji + " HOTEL EVENT TRIGGERED: " + eventType.name());
-        logEvent("HOTEL_EVENT: " + eventType.name() + " (Guest: " + guestId + ", Data: " + data + ")");
+            eventCounter++;
+            HotelEvent event = new HotelEvent(guestId, eventType, time, data);
 
-        // Notificeer alle hotel event listeners
-        for (HotelEventListener listener : hotelListeners) {
-            System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
-            listener.notify(event);
+            String emoji = getEventEmoji(eventType);
+            System.out.println("\n" + emoji + " HOTEL EVENT TRIGGERED: " + eventType.name());
+            logEvent("HOTEL_EVENT: " + eventType.name() + " (Guest: " + guestId + ", Data: " + data + ")");
+
+            // Notificeer alle hotel event listeners
+            for (HotelEventListener listener : hotelListeners) {
+                try {
+                    System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
+                    listener.notify(event);
+                } catch (Exception e) {
+                    String errorMsg = "⚠️ Error notifying listener: " + e.getMessage();
+                    System.err.println(errorMsg);
+                    logError(errorMsg);
+                }
+            }
+
+            // Ook het centrale systeem notificeren
+            notify(event);
+        } catch (Exception e) {
+            String errorMsg = "❌ Exception in triggerHotelEvent: " + e.getMessage();
+            System.err.println(errorMsg);
+            logError(errorMsg);
         }
-
-        // Ook het centrale systeem notificeren
-        notify(event);
     }
 
     /**
      * HotelEventListener interface - ontvang en verwerk events
+     * US4.2.A: Robuuste foutafhandeling voor null/corrupte event data
      */
     @Override
     public void notify(HotelEvent event) {
-        switch (event.getEventType()) {
-            case CHECK_IN:
-                logEvent("✅ CHECK_IN: Guest " + event.getGuestId() + " checked in");
-                break;
-            case CHECK_OUT:
-                logEvent("🔓 CHECK_OUT: Guest " + event.getGuestId() + " checked out");
-                break;
-            case CLEANING_EMERGENCY:
-                logEvent("🚨 CLEANING_EMERGENCY: Room " + event.getData() + " needs urgent cleaning");
-                break;
-            case EVACUATE:
-                logEvent("🏃 EVACUATE: Emergency evacuation initiated");
-                break;
-            case GODZILLA:
-                logEvent("🦖 GODZILLA: Monster attack! Guest " + event.getGuestId());
-                break;
-            case NEED_FOOD:
-                logEvent("🍽️ NEED_FOOD: Guest " + event.getGuestId() + " wants food");
-                break;
-            case GOTO_CINEMA:
-                logEvent("🎬 GOTO_CINEMA: Guest " + event.getGuestId() + " going to cinema");
-                break;
-            case GOTO_FITNESS:
-                logEvent("💪 GOTO_FITNESS: Guest " + event.getGuestId() + " going to fitness");
-                break;
-            case START_CINEMA:
-                logEvent("🎞️ START_CINEMA: Cinema show starting");
-                break;
-            case NONE:
-            default:
-                logEvent("⚠️ NONE/UNKNOWN: Event type not handled");
-                break;
+        try {
+            // NULL check
+            if (event == null) {
+                String errorMsg = "⚠️ [EventBus] NULL HotelEvent ontvangen";
+                System.err.println(errorMsg);
+                logError(errorMsg);
+                return;
+            }
+
+            // NULL type check
+            if (event.getEventType() == null) {
+                String errorMsg = "⚠️ [EventBus] Null event type in HotelEvent";
+                System.err.println(errorMsg);
+                logError(errorMsg);
+                return;
+            }
+
+            switch (event.getEventType()) {
+                case CHECK_IN:
+                    logEvent("✅ CHECK_IN: Guest " + event.getGuestId() + " checked in");
+                    break;
+                case CHECK_OUT:
+                    logEvent("🔓 CHECK_OUT: Guest " + event.getGuestId() + " checked out");
+                    break;
+                case CLEANING_EMERGENCY:
+                    logEvent("🚨 CLEANING_EMERGENCY: Room " + event.getData() + " needs urgent cleaning");
+                    break;
+                case EVACUATE:
+                    logEvent("🏃 EVACUATE: Emergency evacuation initiated");
+                    break;
+                case GODZILLA:
+                    logEvent("🦖 GODZILLA: Monster attack! Guest " + event.getGuestId());
+                    break;
+                case NEED_FOOD:
+                    logEvent("🍽️ NEED_FOOD: Guest " + event.getGuestId() + " wants food");
+                    break;
+                case GOTO_CINEMA:
+                    logEvent("🎬 GOTO_CINEMA: Guest " + event.getGuestId() + " going to cinema");
+                    break;
+                case GOTO_FITNESS:
+                    logEvent("💪 GOTO_FITNESS: Guest " + event.getGuestId() + " going to fitness");
+                    break;
+                case START_CINEMA:
+                    logEvent("🎞️ START_CINEMA: Cinema show starting");
+                    break;
+                case NONE:
+                default:
+                    logEvent("⚠️ NONE/UNKNOWN: Event type not handled");
+                    break;
+            }
+        } catch (Exception e) {
+            String errorMsg = "❌ Exception in notify: " + e.getMessage();
+            System.err.println(errorMsg);
+            logError(errorMsg);
         }
     }
 
@@ -205,6 +266,13 @@ public class EventBusImpl implements HotelEventListener {
     }
 
     /**
+     * Log een error voor debugging
+     */
+    private void logError(String message) {
+        errorLog.add("[" + System.currentTimeMillis() + "] " + message);
+    }
+
+    /**
      * Geef event log terug
      */
     public List<String> getEventLog() {
@@ -212,10 +280,24 @@ public class EventBusImpl implements HotelEventListener {
     }
 
     /**
+     * Geef error log terug
+     */
+    public List<String> getErrorLog() {
+        return new ArrayList<>(errorLog);
+    }
+
+    /**
      * Wis event log
      */
     public void clearEventLog() {
         eventLog.clear();
+    }
+
+    /**
+     * Wis error log
+     */
+    public void clearErrorLog() {
+        errorLog.clear();
     }
 
     /**
