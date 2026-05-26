@@ -23,6 +23,10 @@ public class EventBusImpl implements HotelEventListener {
     // Dit houdt de daadwerkelijke status van het systeem bij volgens de acceptatiecriteria
     private String systemState = "IDLE";
 
+    // --- US4.2.b EVENT VALIDATION ---
+    // Referentie naar Simulator voor validatie van DLL-events op basis van running-status
+    private Simulator simulator;
+
     /**
      * US4.1: Geeft de huidige status van het systeem terug voor de acceptatietest
      */
@@ -31,14 +35,55 @@ public class EventBusImpl implements HotelEventListener {
     }
 
     /**
-     * US4.1: Verwerkt de specifieke events uit de externe library (DLL)
+     * US4.2.b: Set de Simulator referentie zodat EventBus de running-status kan checken
+     * Dit wordt aangeroepen vanuit de Simulator constructor direct na EventBusImpl creatie
+     */
+    public void setSimulator(Simulator simulator) {
+        this.simulator = simulator;
+    }
+
+    /**
+     * US4.1 + US4.2.b: Verwerkt de specifieke events uit de externe library (DLL)
      * en voert de bijbehorende interne logica uit.
+     * 
+     * WIJZIGING US4.2.b:
+     * - Controleert of binnenkomende DLL-events logisch zijn gegeven de huidige simulatiestatus
+     * - Events die alleen in RUNNING geldig zijn (bijv "ProcessData") worden geweigerd als de simulator niet draait
+     * - Illogical events worden gelogd en returnen vroeg zodat systemState niet wijzigt
      */
     public void handleExternalDLLEvent(String dllEventName) {
         eventCounter++;
         logEvent("DLL_EVENT: " + dllEventName);
         System.out.println("\n⚙️ [EventBus] DLL Event ontvangen: " + dllEventName);
 
+        // --- US4.2.b VALIDATIE: Bepaal of de simulator draait ---
+        boolean simIsRunning = false;
+        if (this.simulator != null) {
+            try {
+                simIsRunning = this.simulator.isRunning();
+            } catch (Exception e) {
+                // Defensive: als iets misgaat, behandel als niet-running
+                System.err.println("⚠️ [EventBus] Fout bij status-check van Simulator: " + e.getMessage());
+                simIsRunning = false;
+            }
+        }
+
+        // --- US4.2.b VALIDATIE: Check of event toegestaan is voor huidige status ---
+        // Events die ALLEEN in RUNNING geldig zijn:
+        // "ProcessData" mag alleen verwerkt worden als simulatie draait
+        if ("ProcessData".equalsIgnoreCase(dllEventName)) {
+            if (!simIsRunning) {
+                // ❌ ILLOGICAL: Event geweigerd omdat simulator niet in RUNNING staat
+                String warningMsg = "ILLOGICAL_DLL_EVENT: '" + dllEventName + "' geweigerd — simulatie niet in RUNNING status";
+                System.out.println("  ❌ [VALIDATIE] " + warningMsg);
+                logEvent(warningMsg);
+                // BELANGRIJK: Return ZONDER systemState te wijzigen!
+                // Dit zorgt ervoor dat de status "Stopped" / "IDLE" blijft zoals het was.
+                return;
+            }
+        }
+
+        // --- Bestaande event-verwerking (alleen bereikt voor geldig event) ---
         // Schakel tussen de specifieke events genoemd in de User Story
         switch (dllEventName) {
             case "Initialization":
@@ -55,6 +100,12 @@ public class EventBusImpl implements HotelEventListener {
                 System.out.println("  → [Interne Logica] Sequentie succesvol afgerond!");
                 // HARDE EIS: Systeem status markeren als "Sequence Processed"
                 this.systemState = "Sequence Processed";
+                break;
+
+            case "ProcessData":
+                // Dit event wordt hier bereikt ALLEEN als validatie passed (simulatie draait)
+                System.out.println("  → [Interne Logica] Verwerking van externe data...");
+                this.systemState = "PROCESSING_DATA";
                 break;
 
             default:

@@ -37,6 +37,7 @@ import java.util.Map;
         this.clock = new SimulationClock(100);
         this.hteClock = new HTEClock();
         this.eventBus = new EventBusImpl();  // Initialize event system
+        this.eventBus.setSimulator(this);   // US4.2.b: Koppel simulator aan EventBus voor validatie
 
         initialiseerLift();
         initialiseerPersonen();
