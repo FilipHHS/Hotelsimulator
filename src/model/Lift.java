@@ -12,7 +12,7 @@ public class Lift implements TickListener {
     private double y;
     private final int schachtMinY;
     private final int schachtMaxY;
-    private EventBusImpl eventBus;  // Event system
+    private IEventBus eventBus;  // Event system
 
     private final List<Persoon> passagiers = new ArrayList<>();
     private final Map<Persoon, Integer> passengerDestinations = new HashMap<>();
@@ -143,5 +143,5 @@ public class Lift implements TickListener {
     public boolean isFireAlarmActive() { return fireAlarmActive; }
     public List<Persoon> getPassagiers() { return new ArrayList<>(passagiers); }
     public int getDestination(Persoon p) { return passengerDestinations.getOrDefault(p, -1); }
-    public void setEventBus(EventBusImpl eventBus) { this.eventBus = eventBus; }
+    public void setEventBus(IEventBus eventBus) { this.eventBus = eventBus; }
 }

@@ -18,6 +18,8 @@ import java.util.Map;
     private int lastGuestSpawnTime = 0;            // Teller voor automatisch spawnen van gasten
     private static final int CHECKOUT_NA_TICKS = 600;
 
+    private FireAlarmService fireAlarmService;
+
     // Referenties naar model en UI
     private Hotel hotel;                           // Hotel-model met kamers, areas en personen
     private HotelPanel hotelPanel;                 // UI-paneel om te verversen
@@ -73,6 +75,7 @@ import java.util.Map;
     // Zet startposities en koppelingen (lift, hotel, tick-listener) voor alle personen
     private void initialiseerPersonen() {
         Area opslagArea = null;
+        this.fireAlarmService = new FireAlarmService(hotel, lift);
 
         // Zoek eerst handmatig de Lobby en de Opslag (simpele for-loop)
         for (Area area : hotel.getAreas()) {
@@ -284,15 +287,15 @@ import java.util.Map;
         String randomName = firstNames[(int)(Math.random() * firstNames.length)];
         String randomType = types[(int)(Math.random() * types.length)];
 
-        Gast newGuest = new Gast(randomName, -1, 0);
-        newGuest.setLift(lift);
-        newGuest.setHotel(hotel);
-        newGuest.setEventBus(eventBus);
-        newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
-
-        double startX = -1.0;
         double startY = (lobbyArea.getY() - 1) + 0.5;
-        newGuest.setStartPositie(startX, startY);
+        Gast newGuest = new GastBuilder()
+                .naam(randomName)
+                .hotel(hotel)
+                .lift(lift)
+                .eventBus(eventBus)
+                .gridBounds(hotel.getBreedte(), hotel.getHoogte())
+                .startPos(-1.0, startY)
+                .build();
 
         hteClock.addListener(newGuest);
         hotel.addPersoon(newGuest);
@@ -325,33 +328,13 @@ import java.util.Map;
     // --- BRANDALARM (US4.3) ---
 
     public void triggerFireAlarm() {
-        System.out.println("\n============================================================");
-        System.out.println("🚨 🚨 🚨  BRANDALARM GEACTIVEERD - EVACUATIE BEGONNEN  🚨 🚨 🚨");
-        System.out.println("============================================================\n");
-
-        if (lift != null) {
-            lift.activeerFireAlarm();
-        }
-
-        for (Persoon persoon : hotel.getPersonen()) {
-            persoon.activeerFireAlarm();
-        }
+        fireAlarmService.trigger();
     }
+
 
     public void clearFireAlarm() {
-        System.out.println("\n============================================================");
-        System.out.println("✓ ✓ ✓  BRANDALARM REPROGMANSEERD - EVACUATIE AFGEROND  ✓ ✓ ✓");
-        System.out.println("============================================================\n");
-
-        if (lift != null) {
-            lift.deactiveerFireAlarm();
-        }
-
-        for (Persoon persoon : hotel.getPersonen()) {
-            persoon.deactiveerFireAlarm();
-        }
+        fireAlarmService.clear();
     }
-
     // --- GETTERS & SETTERS (ALGEMENE BESTURING) ---
 
     public void start() { this.running = true; clock.start(); }

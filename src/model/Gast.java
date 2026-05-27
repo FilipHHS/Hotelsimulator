@@ -5,6 +5,7 @@ import model.strategy.GastNormalStrategy;
 import model.strategy.EvacuationMovement;
 import java.awt.Color;
 import java.util.Random;
+import model.state.GastStateHandler;
 
 public class Gast extends Persoon {
     private static final Random RANDOM = new Random();
@@ -17,7 +18,7 @@ public class Gast extends Persoon {
     private int maxX, maxY;
     private Hotel hotel;
     private Lift lift;
-    private EventBusImpl eventBus;
+    private IEventBus eventBus;
     private boolean inLift = false;
     private boolean usesTrap = false;
     private Kamer huidigKamer;
@@ -35,6 +36,8 @@ public class Gast extends Persoon {
     private int godzillaTicksRemaining = 0;
     private int stapsInRichting = 0;
     private int maxStapsRichting = 5;
+
+    private GastStateHandler currentStateHandler;
 
     public enum State {
         WANDELEN, NAAR_LIFT_WACHTEN, WACHTEN_OP_VERVOER, IN_LIFT,
@@ -219,6 +222,12 @@ public class Gast extends Persoon {
     private double getAreaCenterX(Area area) { return area.getX() - 1 + area.getBreedte() / 2.0; }
 
     // --- GETTERS & SETTERS (Voor de Strategie) ---
+    public GastStateHandler getCurrentStateHandler() { return currentStateHandler; }
+    public void transitionTo(GastStateHandler newState) {
+        if (currentStateHandler != null) currentStateHandler.onExit(this);
+        currentStateHandler = newState;
+        currentStateHandler.onEnter(this);
+    }
     public State getGastState() { return state; }
     public void setGastState(State state) { this.state = state; }
     public boolean isInLift() { return inLift; }
@@ -238,12 +247,13 @@ public class Gast extends Persoon {
     public void setFaciliteitsBezoekDuur(int duur) { this.faciliteitsBezoekDuur = duur; }
     public void setHuidigerFaciliteitType(String type) { this.huidigerFaciliteitType = type; }
     public int getMaxX() { return maxX; }
+    @Override
     public int getMaxY() { return maxY; }
-
+    public void setStateToLeft() { this.state = State.VERLAAT_HOTEL; }
     public void setGridBounds(int maxX, int maxY) { this.maxX = maxX; this.maxY = maxY; }
     public void setLift(Lift lift) { this.lift = lift; }
     public void setHotel(Hotel hotel) { this.hotel = hotel; }
-    public void setEventBus(EventBusImpl eventBus) { this.eventBus = eventBus; }
+    public void setEventBus(IEventBus eventBus) { this.eventBus = eventBus; }
     public Color getKleur() { return kleur; }
     public Kamer getHuidigKamer() { return huidigKamer; }
 }

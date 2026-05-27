@@ -8,6 +8,7 @@ import model.Persoon;
 import model.Lift;
 import model.Schoonmaker;
 import model.Kamer;
+import model.AreaType;
 
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
@@ -439,18 +440,9 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     // --- HULPMETHODEN VOOR LABELS EN KLEUREN (MODERNE SWITCH) ---
 
     private String getLabel(Area area) {
-        return switch (area.getAreaType()) {
-            case "Room" -> getKamerLabel(area);
-            case "Cinema" -> "Bioscoop";
-            case "Restaurant" -> "Restaurant";
-            case "Fitness" -> "Fitness";
-            case "Lobby" -> "Lobby";
-            case "Schacht" -> "Schacht";
-            case "Lift" -> "Lift";
-            case "Staircase" -> "Trap";
-            case "Storage" -> "Opslag";
-            default -> area.getAreaType();
-        };
+        AreaType type = AreaType.fromString(area.getAreaType());
+        if (type == AreaType.ROOM) return getKamerLabel(area);
+        return type.getLabel();
     }
 
     private String getKamerLabel(Area area) {
@@ -463,28 +455,19 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     }
 
     private Color getKleur(Area area) {
-        return switch (area.getAreaType()) {
-            case "Room" -> {
-                String c = area.getClassification();
-                if (c == null) yield new Color(200, 230, 255);
-                if (c.equalsIgnoreCase("PentHouse")) yield new Color(120, 0, 0);
-                if (c.contains("1")) yield new Color(200, 230, 255);
-                if (c.contains("2")) yield new Color(150, 200, 255);
-                if (c.contains("3")) yield new Color(100, 170, 255);
-                if (c.contains("4")) yield new Color(50, 130, 255);
-                if (c.contains("5")) yield new Color(0, 80, 200);
-                yield new Color(200, 230, 255);
-            }
-            case "Lobby" -> new Color(255, 220, 50);
-            case "Schacht" -> new Color(220, 220, 220);
-            case "Lift" -> new Color(255, 150, 0);
-            case "Staircase" -> new Color(100, 200, 100);
-            case "Restaurant" -> new Color(255, 100, 100);
-            case "Cinema" -> new Color(200, 100, 200);
-            case "Fitness" -> new Color(100, 220, 180);
-            case "Storage" -> new Color(180, 140, 100);
-            default -> Color.WHITE;
-        };
+        AreaType type = AreaType.fromString(area.getAreaType());
+        if (type == AreaType.ROOM) {
+            String c = area.getClassification();
+            if (c == null)                        return new Color(200, 230, 255);
+            if (c.equalsIgnoreCase("PentHouse"))  return new Color(120,   0,   0);
+            if (c.contains("1"))                  return new Color(200, 230, 255);
+            if (c.contains("2"))                  return new Color(150, 200, 255);
+            if (c.contains("3"))                  return new Color(100, 170, 255);
+            if (c.contains("4"))                  return new Color( 50, 130, 255);
+            if (c.contains("5"))                  return new Color(  0,  80, 200);
+            return new Color(200, 230, 255);
+        }
+        return type.getColor();
     }
 
     // --- ONGEBRUIKTE INTERFACE METHODS COMPACT ONDERAAN ---

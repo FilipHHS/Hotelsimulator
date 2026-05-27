@@ -20,7 +20,7 @@ public class Validatie {
 
     public static void main(String[] args) {
         System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println("🧪 US4.2.b TEST: Validatie van onlogische events");
+        System.out.println("🧪 Validatie van onlogische events");
         System.out.println("═══════════════════════════════════════════════════════════════\n");
 
         // SETUP

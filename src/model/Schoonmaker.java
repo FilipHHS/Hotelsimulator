@@ -12,7 +12,7 @@ public class Schoonmaker extends Persoon {
 
     private Hotel hotel;
     private Lift lift;
-    private EventBusImpl eventBus;
+    private IEventBus eventBus;
     private Kamer huidigKamer;
     private int schoonmaakTimer = 0;
     private boolean inLift = false;
@@ -125,8 +125,11 @@ public class Schoonmaker extends Persoon {
     public void setSchoonmaakTimer(int timer) { this.schoonmaakTimer = timer; }
     public Lift getLift() { return lift; }
     public int getDoelVerdieping() { return doelVerdieping; }
+    @Override
     public int getMaxY() { return maxY; }
-    public EventBusImpl getEventBus() { return eventBus; }
+    @Override
+    public void setStateToLeft() { this.setState(State.BUITEN); }
+    public IEventBus getEventBus() { return eventBus; }
 
     // Initialisatie setters
     public void setHotel(Hotel h) { this.hotel = h; }

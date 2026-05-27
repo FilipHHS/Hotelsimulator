@@ -55,7 +55,6 @@ public class GastNormalStrategy implements IMovementStrategy {
             int keuze = RANDOM.nextInt(10);
             if (keuze < 4) gast.setX(Math.max(0.5, gast.getX() - 3));
             else if (keuze < 8) gast.setX(Math.min(gast.getMaxX() - 1.5, gast.getX() + 3));
-
             gast.setStapsInRichting(0);
             gast.setMaxStapsRichting(RANDOM.nextInt(3) + 2);
         }

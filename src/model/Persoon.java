@@ -80,6 +80,9 @@ public abstract class Persoon implements TickListener {
         System.out.println("[FireAlarm] ✓ ALARM GEDEACTIVEERD voor " + naam);
     }
 
+    public abstract int getMaxY();
+    public abstract void setStateToLeft();
+
     // --- GETTERS & SETTERS ---
     public int getId() { return id; }
     public String getNaam() { return naam; }

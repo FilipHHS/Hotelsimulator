@@ -1,8 +1,7 @@
 package model.strategy;
 
 import model.Persoon;
-import model.Gast;
-import model.Schoonmaker;
+
 
 /**
  * Strategie voor wanneer het brandalarm afgaat.
@@ -19,10 +18,7 @@ public class EvacuationMovement implements IMovementStrategy {
         double pY = persoon.getY();
 
         // Bepaal de hotelhoogte dynamisch op basis van het type persoon
-        int maxY = 6;
-        if (persoon instanceof Gast) maxY = ((Gast) persoon).getMaxY();
-        if (persoon instanceof Schoonmaker) maxY = ((Schoonmaker) persoon).getMaxY();
-        int lobbyY = maxY - 1;
+        int maxY = persoon.getMaxY();        int lobbyY = maxY - 1;
 
         // Stap 1: Als we nog boven zitten, loop eerst horizontaal naar de trap
         if ((int)pY != lobbyY) {
@@ -39,11 +35,7 @@ public class EvacuationMovement implements IMovementStrategy {
                 persoon.setX(-1.5); // Loop de simulatie uit (buiten het scherm)
 
                 // Update de specifieke status van de persoon
-                if (persoon instanceof Schoonmaker) {
-                    ((Schoonmaker) persoon).setState(Schoonmaker.State.BUITEN);
-                } else if (persoon instanceof Gast) {
-                    ((Gast) persoon).setGastState(Gast.State.VERLAAT_HOTEL);
-                }
+                persoon.setStateToLeft();
             } else {
                 persoon.setX(pX + (dx > 0 ? SPEED : -SPEED));
             }

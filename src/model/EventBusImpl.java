@@ -12,7 +12,7 @@ import java.util.List;
  * Events kunnen door de Simulator of andere klasses getriggerd worden
  * * UPDATE: Toegevoegd voor US4.1 Externe DLL Events (systemState & handleExternalDLLEvent)
  */
-public class EventBusImpl implements HotelEventListener {
+public class EventBusImpl implements HotelEventListener, IEventBus {
 
     private final List<TickListener> listeners = new ArrayList<>();
     private final List<HotelEventListener> hotelListeners = new ArrayList<>();
@@ -305,5 +305,8 @@ public class EventBusImpl implements HotelEventListener {
      */
     public int getEventCount() {
         return eventCounter;
+    }
+
+    public void setSimulator(Simulator simulator) {
     }
 }
