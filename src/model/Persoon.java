@@ -1,6 +1,7 @@
 package model;
 
 import model.strategy.IMovementStrategy;
+import model.strategy.MovementContext;
 
 /**
  * Basisklasse voor alle personen (zoals Gasten en Schoonmakers) binnen de simulatie.
@@ -25,34 +26,75 @@ public abstract class Persoon implements TickListener {
 
     // --- STRATEGY PATTERN COMPONENTEN ---
 
-    // De huidige bewegingsstrategie van de persoon (bijv. Normal, Evacuation, Panic)
-    protected IMovementStrategy movementStrategy;
+    // Strategy Pattern rol: MovementContext is de context class.
+    // Persoon gebruikt de context, maar beheert de concrete strategies niet zelf.
+    private final MovementContext movementContext;
 
-    public Persoon(String naam, String type) {
+    public Persoon(String naam, String type, IMovementStrategy normalMovementStrategy,
+                   IMovementStrategy evacuationMovementStrategy) {
         this.id = volgendeId++;
         this.naam = naam;
         this.type = type;
+        this.movementContext = new MovementContext(normalMovementStrategy, evacuationMovementStrategy);
     }
 
     /**
-     * STRATEGY PATTERN: Voert de beweging uit gebaseerd op de actieve strategie.
-     * De Persoon weet zelf niet HOE hij loopt, dat bepaalt het strategie-object.
+     * Enige ingang voor beweging bij personen.
+     * De actieve strategy bepaalt het doel, Persoon voert de beweging uit.
+     * Hier wordt polymorfisme gebruikt: GastNormalStrategy, SchoonmakerNormalStrategy
+     * of EvacuationMovement kan achter dezelfde interface zitten.
      */
-    public void performMovement() {
-        if (movementStrategy != null) {
-            movementStrategy.move(this); // Geef 'zichzelf' mee aan de strategie
+    public void beweeg() {
+        movementContext.beweeg(this);
+    }
+
+    /**
+     * Enige basis-beweegmethode voor fysieke verplaatsing.
+     * Strategies gebruiken deze helper zodat x/y-aanpassingen niet overal los staan.
+     *
+     * @return true als de persoon het doel heeft bereikt
+     */
+    public boolean beweegNaar(double doelX, double doelY, double snelheid) {
+        this.destX = doelX;
+        this.destY = doelY;
+
+        if (Math.abs(doelX - x) > snelheid) {
+            x += Math.signum(doelX - x) * snelheid;
+            return false;
         }
+        x = doelX;
+
+        if (Math.abs(doelY - y) > snelheid) {
+            y += Math.signum(doelY - y) * snelheid;
+            return false;
+        }
+        y = doelY;
+
+        return true;
     }
 
     /**
-     * STRATEGY PATTERN: Verander het gedrag tijdens de simulatie (Runtime binding).
-     * Handig voor wanneer het brandalarm afgaat of een gast van gedachten verandert.
+     * Strategy-injectie: de buitenwereld bepaalt welke algoritmes deze persoon gebruikt.
+     * Simulator gebruikt dit om concrete strategies mee te geven.
+     * Daardoor maakt Persoon zelf geen new GastNormalStrategy() of new EvacuationMovement().
      */
-    public void setMovementStrategy(IMovementStrategy strategy) {
-        this.movementStrategy = strategy;
+    public void setMovementStrategies(IMovementStrategy normalMovementStrategy,
+                                      IMovementStrategy evacuationMovementStrategy) {
+        movementContext.setStrategies(normalMovementStrategy, evacuationMovementStrategy);
     }
 
-    // ------------------------------------
+    // Wissel runtime tussen de geinjecteerde strategies.
+    protected void useNormalMovementStrategy() {
+        movementContext.useNormalStrategy();
+    }
+
+    protected void useEvacuationMovementStrategy() {
+        movementContext.useEvacuationStrategy();
+    }
+
+    protected boolean isUsingEvacuationMovementStrategy() {
+        return movementContext.isUsingEvacuationStrategy();
+    }
 
     public void setStartPositie(double startX, double startY) {
         this.x = startX;

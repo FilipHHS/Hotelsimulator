@@ -6,15 +6,23 @@ import model.Persoon;
 import model.Schoonmaker;
 import model.Area;
 
+/**
+ * Concrete strategy: normaal gedrag van een Schoonmaker.
+ * De schoonmaker zoekt vieze kamers, reist erheen en maakt ze schoon.
+ *
+ * Strategy Pattern rol: dit is een concrete strategy voor Schoonmaker.
+ * De schoonmaaklogica staat hier, niet in Persoon.
+ */
 public class SchoonmakerNormalStrategy implements IMovementStrategy {
 
     @Override
-    public void move(Persoon persoon) {
+    public void beweeg(Persoon persoon) {
+        // Deze strategy is alleen bedoeld voor Schoonmaker-objecten.
         if (!(persoon instanceof Schoonmaker)) return;
         Schoonmaker sm = (Schoonmaker) persoon;
 
         if (sm.isInLift()) {
-            handleLiftMovement(sm);
+            volgLift(sm);
             return;
         }
 
@@ -26,12 +34,8 @@ public class SchoonmakerNormalStrategy implements IMovementStrategy {
                 sm.setHuidigKamer(null);
             }
 
-            // Loop rustig terug naar de opslag op (7.5, 5.5)
-            if (Math.abs(sm.getX() - 7.5) > 0.1) {
-                sm.setX(sm.getX() + (sm.getX() < 7.5 ? Schoonmaker.SPEED : -Schoonmaker.SPEED));
-            } else if (Math.abs(sm.getY() - 5.5) > 0.1) {
-                sm.setY(sm.getY() + (sm.getY() < 5.5 ? Schoonmaker.SPEED : -Schoonmaker.SPEED));
-            } else {
+            // Strategy kiest opslag als doel; Persoon.beweegNaar(...) verplaatst de schoonmaker.
+            if (sm.beweegNaar(7.5, 5.5, Schoonmaker.SPEED)) {
                 sm.setState(Schoonmaker.State.VRIJ);
             }
             return;
@@ -43,11 +47,11 @@ public class SchoonmakerNormalStrategy implements IMovementStrategy {
         if (sm.getState() == Schoonmaker.State.SCHOONMAKEN) {
             werkAanKamer(sm);
         } else {
-            beweegNaarKamer(sm, targetX, targetY, viezeKamer);
+            gaNaarKamer(sm, targetX, targetY, viezeKamer);
         }
     }
 
-    private void beweegNaarKamer(Schoonmaker sm, double tx, double ty, Kamer doelKamer) {
+    private void gaNaarKamer(Schoonmaker sm, double tx, double ty, Kamer doelKamer) {
         if (doelKamer.getStatus() != Kamer.KamerStatus.SCHOONMAKEN) {
             sm.setState(Schoonmaker.State.VRIJ);
             sm.setHuidigKamer(null);
@@ -55,15 +59,11 @@ public class SchoonmakerNormalStrategy implements IMovementStrategy {
         }
 
         if ((int)sm.getY() != (int)ty) {
-            if (Math.abs(sm.getX() - Schoonmaker.LIFT_X) > 0.1) {
-                sm.setX(sm.getX() + (sm.getX() < Schoonmaker.LIFT_X ? Schoonmaker.SPEED : -Schoonmaker.SPEED));
-            } else {
+            if (sm.beweegNaar(Schoonmaker.LIFT_X, sm.getY(), Schoonmaker.SPEED)) {
                 sm.stapInLift((int)ty);
             }
         } else {
-            if (Math.abs(sm.getX() - tx) > 0.1) {
-                sm.setX(sm.getX() + (sm.getX() < tx ? Schoonmaker.SPEED : -Schoonmaker.SPEED));
-            } else {
+            if (sm.beweegNaar(tx, sm.getY(), Schoonmaker.SPEED)) {
                 if (doelKamer.getStatus() == Kamer.KamerStatus.SCHOONMAKEN) {
                     sm.setHuidigKamer(doelKamer);
                     sm.setState(Schoonmaker.State.SCHOONMAKEN);
@@ -90,7 +90,7 @@ public class SchoonmakerNormalStrategy implements IMovementStrategy {
         }
     }
 
-    private void handleLiftMovement(Schoonmaker sm) {
+    private void volgLift(Schoonmaker sm) {
         sm.setX(sm.getLift().getX());
         sm.setY(sm.getLift().getY());
 

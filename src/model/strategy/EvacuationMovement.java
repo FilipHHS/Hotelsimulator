@@ -5,8 +5,11 @@ import model.Gast;
 import model.Schoonmaker;
 
 /**
- * Strategie voor wanneer het brandalarm afgaat.
- * Personen negeren de lift en rennen via de trap (x=8.5) naar buiten.
+ * Concrete strategy: noodgedrag bij brandalarm.
+ * Personen negeren normale doelen en bewegen via de trap richting uitgang.
+ *
+ * Strategy Pattern rol: dit is een concrete strategy die runtime gekozen wordt.
+ * Gast en Schoonmaker kunnen allebei tijdelijk deze strategy gebruiken.
  */
 public class EvacuationMovement implements IMovementStrategy {
     private static final double SPEED = 0.5;
@@ -14,8 +17,8 @@ public class EvacuationMovement implements IMovementStrategy {
     private static final double LOBBY_X = 1.5;
 
     @Override
-    public void move(Persoon persoon) {
-        double pX = persoon.getX();
+    public void beweeg(Persoon persoon) {
+        // Deze strategy werkt voor meerdere soorten Personen tijdens evacuatie.
         double pY = persoon.getY();
 
         // Bepaal de hotelhoogte dynamisch op basis van het type persoon
@@ -26,16 +29,10 @@ public class EvacuationMovement implements IMovementStrategy {
 
         // Stap 1: Als we nog boven zitten, loop eerst horizontaal naar de trap
         if ((int)pY != lobbyY) {
-            if (Math.abs(pX - STAIR_X) > SPEED) {
-                persoon.setX(pX + (pX < STAIR_X ? SPEED : -SPEED));
-            } else {
-                // Eenmaal bij de trap: zak verticaal naar beneden richting lobby
-                persoon.setY(pY + (pY < lobbyY ? SPEED : -SPEED));
-            }
+            persoon.beweegNaar(STAIR_X, lobbyY + 0.5, SPEED);
         } else {
             // Stap 2: We zijn in de lobby, loop nu horizontaal naar de uitgang
-            double dx = LOBBY_X - pX;
-            if (Math.abs(dx) < SPEED) {
+            if (persoon.beweegNaar(LOBBY_X, pY, SPEED)) {
                 persoon.setX(-1.5); // Loop de simulatie uit (buiten het scherm)
 
                 // Update de specifieke status van de persoon
@@ -44,8 +41,6 @@ public class EvacuationMovement implements IMovementStrategy {
                 } else if (persoon instanceof Gast) {
                     ((Gast) persoon).setGastState(Gast.State.VERLAAT_HOTEL);
                 }
-            } else {
-                persoon.setX(pX + (dx > 0 ? SPEED : -SPEED));
             }
         }
     }

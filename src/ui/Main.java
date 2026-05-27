@@ -1,6 +1,9 @@
 package ui;
 
 import model.*;
+import model.strategy.EvacuationMovement;
+import model.strategy.GastNormalStrategy;
+import model.strategy.SchoonmakerNormalStrategy;
 import javax.swing.*;
 import javax.swing.WindowConstants;
 import java.awt.Color;
@@ -218,7 +221,7 @@ public class Main {
     private static void addTestGuests(Hotel hotel) {
         String[] namen = {"Alice", "Bob", "Charlie", "Diana", "Frank", "Grace"};
         for (String naam : namen) {
-            Gast g = new Gast(naam, -1, 0);
+            Gast g = new Gast(naam, -1, 0, new GastNormalStrategy(), new EvacuationMovement());
             g.setHotel(hotel);
             g.setStartPositie(-1.0, 6.5);
             hotel.addPersoon(g);
@@ -226,8 +229,10 @@ public class Main {
     }
 
     private static void addSchoonmakers(Hotel hotel) {
-        Schoonmaker s1 = new Schoonmaker("Schoonmaker1", 8, 6);
-        Schoonmaker s2 = new Schoonmaker("Schoonmaker2", 8, 6);
+        Schoonmaker s1 = new Schoonmaker("Schoonmaker1", 8, 6,
+                new SchoonmakerNormalStrategy(), new EvacuationMovement());
+        Schoonmaker s2 = new Schoonmaker("Schoonmaker2", 8, 6,
+                new SchoonmakerNormalStrategy(), new EvacuationMovement());
 
         s1.setHotel(hotel);
         s2.setHotel(hotel);

@@ -1,8 +1,7 @@
 package model;
 
 import hotelevents.HotelEventType;
-import model.strategy.SchoonmakerNormalStrategy;
-import model.strategy.EvacuationMovement;
+import model.strategy.IMovementStrategy;
 import java.awt.Color;
 
 public class Schoonmaker extends Persoon {
@@ -22,17 +21,15 @@ public class Schoonmaker extends Persoon {
     public enum State { VRIJ, NAAR_DOEL, SCHOONMAKEN, IN_LIFT, EVACUATIE, BUITEN }
     private State state = State.VRIJ;
 
-    public Schoonmaker(String naam, int startX, int startY) {
-        super(naam, "Schoonmaker");
+    public Schoonmaker(String naam, int startX, int startY, IMovementStrategy normalStrategy,
+                       IMovementStrategy evacuationStrategy) {
+        super(naam, "Schoonmaker", normalStrategy, evacuationStrategy);
 
         // Forceer startpositie naar de opslag
         this.x = 7.5;
         this.y = 5.5;
         this.destX = 7.5;
         this.destY = 5.5;
-
-        // STRATEGY PATTERN: Stel de standaard loopstrategie in
-        setMovementStrategy(new SchoonmakerNormalStrategy());
 
         System.out.println("[Schoonmaker] " + naam + " is in de Opslag (7,5)");
     }
@@ -41,16 +38,16 @@ public class Schoonmaker extends Persoon {
     public void onTick() {
         updateActiviteitLabel();
 
-        // 1. Brandalarm is geactiveerd: Wissel naar vlucht-strategie
-        if (fireAlarmActive && !(movementStrategy instanceof EvacuationMovement)) {
+        // 1. Strategy Pattern: brandalarm wisselt naar de geinjecteerde vluchtstrategie.
+        if (fireAlarmActive && !isUsingEvacuationMovementStrategy()) {
             startEvacuatie();
-            setMovementStrategy(new EvacuationMovement());
+            useEvacuationMovementStrategy();
         }
 
-        // 2. Brandalarm is weer voorbij: Reset naar normaal gedrag
+        // 2. Brandalarm voorbij: terug naar de geinjecteerde normale strategie.
         if (!fireAlarmActive && isEvacuatieBegonnen()) {
             setEvacuatieBegonnen(false);
-            setMovementStrategy(new SchoonmakerNormalStrategy());
+            useNormalMovementStrategy();
             this.state = State.VRIJ;
             setHuidigeActiviteit("⏳ Idle");
             this.x = 7.5; // Terug naar opslag
@@ -61,8 +58,8 @@ public class Schoonmaker extends Persoon {
             return; // Veilig buiten, doe niks meer
         }
 
-        // 3. STRATEGY PATTERN: Voer de actieve strategie uit!
-        performMovement();
+        // 3. Strategy Pattern: voer de actieve bewegingsstrategie uit.
+        beweeg();
     }
 
     private void updateActiviteitLabel() {

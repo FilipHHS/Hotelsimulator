@@ -1,8 +1,7 @@
 package model;
 
 import hotelevents.HotelEventType;
-import model.strategy.GastNormalStrategy;
-import model.strategy.EvacuationMovement;
+import model.strategy.IMovementStrategy;
 import java.awt.Color;
 import java.util.Random;
 
@@ -43,13 +42,12 @@ public class Gast extends Persoon {
     }
 
     private State state = State.WANDELEN;
+    private State stateNaVervoer = State.WANDELEN;
 
-    public Gast(String naam, int ignoreX, int ignoreY) {
-        super(naam, "Gast");
+    public Gast(String naam, int ignoreX, int ignoreY, IMovementStrategy normalStrategy,
+                IMovementStrategy evacuationStrategy) {
+        super(naam, "Gast", normalStrategy, evacuationStrategy);
         this.kleur = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
-
-        // STRATEGY PATTERN: Stel standaard loopgedrag in
-        setMovementStrategy(new GastNormalStrategy());
     }
 
     @Override
@@ -57,17 +55,19 @@ public class Gast extends Persoon {
         // 1. Update timers
         if (godzillaTicksRemaining > 0) godzillaTicksRemaining--;
 
-        // 2. Bepaal of we van strategie moeten wisselen wegens noodsituaties
-        if (fireAlarmActive && !(movementStrategy instanceof EvacuationMovement)) {
+        // 2. Strategy Pattern: wissel runtime naar evacuatiegedrag bij nood.
+        if (fireAlarmActive && !isUsingEvacuationMovementStrategy()) {
             startEvacuatie();
-            setMovementStrategy(new EvacuationMovement());
+            // Runtime strategy switch: vanaf nu gebruikt deze Gast EvacuationMovement.
+            useEvacuationMovementStrategy();
         }
         else if (!fireAlarmActive && isEvacuatieBegonnen()) {
             resetNaEvacuatie();
         }
 
-        // 3. STRATEGY PATTERN: Voer het algoritme uit!
-        performMovement();
+        // 3. Strategy Pattern: voer de actieve bewegingsstrategie uit.
+        // Normaal is dit GastNormalStrategy; bij brandalarm is dit EvacuationMovement.
+        beweeg();
 
         // 4. Update visuele state
         updateLoungeStayTicks();
@@ -104,6 +104,8 @@ public class Gast extends Persoon {
         this.huidigerFaciliteitType = type;
         this.faciliteitX = fX;
         this.faciliteitY = fY;
+        this.destX = fX;
+        this.destY = fY;
 
         if (eventBus != null) {
             int guestId = getNaam().hashCode();
@@ -114,7 +116,7 @@ public class Gast extends Persoon {
             }
         }
 
-        if ((int)fY != (int)y) wiltVerdiepingWisselen();
+        if ((int)fY != (int)y) gaNaarVerdieping((int)fY, State.GAAT_NAAR_FACILITEIT);
         else this.state = State.GAAT_NAAR_FACILITEIT;
     }
 
@@ -132,8 +134,19 @@ public class Gast extends Persoon {
     // --- HELPER METHODES VOOR DE STRATEGIEËN ---
 
     public void wiltVerdiepingWisselen() {
-        this.usesTrap = RANDOM.nextBoolean();
+        int nieuweVerdieping = RANDOM.nextInt(Math.max(1, maxY));
+        if (nieuweVerdieping == (int)y && maxY > 1) {
+            nieuweVerdieping = (nieuweVerdieping + 1) % maxY;
+        }
+        gaNaarVerdieping(nieuweVerdieping, State.WANDELEN);
+    }
+
+    public void gaNaarVerdieping(int verdieping, State vervolgState) {
+        this.doelVerdieping = verdieping;
+        this.stateNaVervoer = vervolgState;
+        this.usesTrap = lift == null || RANDOM.nextBoolean();
         this.destX = usesTrap ? TRAP_X : LIFT_WAIT_X;
+        this.destY = y;
         this.state = State.NAAR_LIFT_WACHTEN;
     }
 
@@ -164,7 +177,7 @@ public class Gast extends Persoon {
 
     private void resetNaEvacuatie() {
         setEvacuatieBegonnen(false);
-        setMovementStrategy(new GastNormalStrategy());
+        useNormalMovementStrategy();
         if (state == State.EVACUATIE || state == State.VERLAAT_HOTEL) {
             state = State.WANDELEN;
             setHuidigeActiviteit("🚶 Wandel");
@@ -234,9 +247,12 @@ public class Gast extends Persoon {
     public void setMaxStapsRichting(int max) { this.maxStapsRichting = max; }
     public boolean isUsesTrap() { return usesTrap; }
     public double getFaciliteitX() { return faciliteitX; }
+    public double getFaciliteitY() { return faciliteitY; }
     public int getFaciliteitsBezoekDuur() { return faciliteitsBezoekDuur; }
     public void setFaciliteitsBezoekDuur(int duur) { this.faciliteitsBezoekDuur = duur; }
     public void setHuidigerFaciliteitType(String type) { this.huidigerFaciliteitType = type; }
+    public State getStateNaVervoer() { return stateNaVervoer; }
+    public void resetStateNaVervoer() { this.stateNaVervoer = State.WANDELEN; }
     public int getMaxX() { return maxX; }
     public int getMaxY() { return maxY; }
 

@@ -2,6 +2,10 @@ package model;
 
 import ui.HotelPanel;
 import hotelevents.HotelEventType;
+import model.strategy.EvacuationMovement;
+import model.strategy.GastNormalStrategy;
+import model.strategy.IMovementStrategy;
+import model.strategy.SchoonmakerNormalStrategy;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,6 +98,9 @@ import java.util.Map;
 
             // GAST INITIALISATIE
             if (persoon instanceof Gast gast) {
+                // Strategy-injectie: Simulator kiest welke bewegingsalgoritmes Gast gebruikt.
+                // Dit is dependency injection: Gast hoeft de concrete strategy niet zelf te maken.
+                gast.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy());
                 gast.setLift(lift);
                 gast.setHotel(hotel);
                 gast.setEventBus(eventBus);  // Set event bus
@@ -108,6 +115,9 @@ import java.util.Map;
 
             // SCHOONMAKER INITIALISATIE
             if (persoon instanceof Schoonmaker schoonmaker) {
+                // Strategy-injectie: Simulator kiest welke bewegingsalgoritmes Schoonmaker gebruikt.
+                // Hierdoor kan Schoonmaker ander normaal gedrag krijgen dan Gast.
+                schoonmaker.setMovementStrategies(createCleanerMovementStrategy(), createEvacuationMovementStrategy());
                 schoonmaker.setLift(lift);
                 schoonmaker.setHotel(hotel);
                 schoonmaker.setEventBus(eventBus);  // Set event bus
@@ -284,7 +294,8 @@ import java.util.Map;
         String randomName = firstNames[(int)(Math.random() * firstNames.length)];
         String randomType = types[(int)(Math.random() * types.length)];
 
-        Gast newGuest = new Gast(randomName, -1, 0);
+        Gast newGuest = new Gast(randomName, -1, 0,
+                createGuestMovementStrategy(), createEvacuationMovementStrategy());
         newGuest.setLift(lift);
         newGuest.setHotel(hotel);
         newGuest.setEventBus(eventBus);
@@ -298,6 +309,20 @@ import java.util.Map;
         hotel.addPersoon(newGuest);
 
         System.out.println("[Simulator] Nieuwe gast '" + randomName + "' komt aan (kamertype: " + randomType + ")");
+    }
+
+    // Factory-methodes voor Strategy Pattern.
+    // Nieuwe strategieen kun je hier toevoegen zonder Persoon aan te passen.
+    private IMovementStrategy createGuestMovementStrategy() {
+        return new GastNormalStrategy();
+    }
+
+    private IMovementStrategy createCleanerMovementStrategy() {
+        return new SchoonmakerNormalStrategy();
+    }
+
+    private IMovementStrategy createEvacuationMovementStrategy() {
+        return new EvacuationMovement();
     }
 
     // --- MANUELE CHECKIN / CHECKOUTS ---
