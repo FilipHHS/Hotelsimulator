@@ -306,4 +306,11 @@ public class EventBusImpl implements HotelEventListener {
     public int getEventCount() {
         return eventCounter;
     }
+
+    private Simulator simulator;
+
+    public void setSimulator(Simulator simulator) {
+        this.simulator = simulator;
+    }
 }
+
