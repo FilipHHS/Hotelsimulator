@@ -24,6 +24,8 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
     // Dit houdt de daadwerkelijke status van het systeem bij volgens de acceptatiecriteria
     private String systemState = "IDLE";
 
+    // --- US4.2.b SIMULATOR REFERENTIE ---
+    private Simulator simulator;
     /**
      * US4.1: Geeft de huidige status van het systeem terug voor de acceptatietest
      */
@@ -50,6 +52,26 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
             logEvent("DLL_EVENT: " + dllEventName);
             System.out.println("\n⚙️ [EventBus] DLL Event ontvangen: " + dllEventName);
 
+            // --- US4.2.b VALIDATIE ---
+            boolean simIsRunning = false;
+            if (this.simulator != null) {
+                try {
+                    simIsRunning = this.simulator.isRunning();
+                } catch (Exception e) {
+                    System.err.println("⚠️ [EventBus] Fout bij status-check: " + e.getMessage());
+                    simIsRunning = false;
+                }
+            }
+
+            if ("ProcessData".equalsIgnoreCase(dllEventName)) {
+                if (!simIsRunning) {
+                    String warningMsg = "ILLOGICAL_DLL_EVENT: '" + dllEventName + "' geweigerd — simulatie niet in RUNNING status";
+                    System.out.println("  ❌ [VALIDATIE] " + warningMsg);
+                    logEvent(warningMsg);
+                    return;
+                }
+            }
+
             // Schakel tussen de specifieke events genoemd in de User Story
             switch (dllEventName) {
                 case "Initialization":
@@ -66,6 +88,11 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
                     System.out.println("  → [Interne Logica] Sequentie succesvol afgerond!");
                     // HARDE EIS: Systeem status markeren als "Sequence Processed"
                     this.systemState = "Sequence Processed";
+                    break;
+
+                case "ProcessData":
+                    System.out.println("  → [Interne Logica] Verwerking van externe data...");
+                    this.systemState = "PROCESSING_DATA";
                     break;
 
                 default:

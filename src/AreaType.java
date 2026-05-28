@@ -21,7 +21,7 @@ public enum AreaType {
     AreaType(String jsonKey, String label, Color color) {
         this.jsonKey = jsonKey;
         this.label   = label;
-        this.color   = color;
+        this.color   = color; // geupdate
     }
 
     public String getLabel() { return label; }
