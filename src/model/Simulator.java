@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-    public class Simulator {
+public class Simulator {
     private boolean running = false;
     private int lastGuestSpawnTime = 0;
     private static final int CHECKOUT_NA_TICKS = 600;
@@ -124,15 +124,15 @@ import java.util.Map;
 
         if (Math.random() < 0.001 && eventBus != null) {
             java.util.List<Persoon> gasten = hotel.getPersonen().stream()
-                .filter(p -> p instanceof Gast)
-                .toList();
+                    .filter(p -> p instanceof Gast)
+                    .toList();
             if (!gasten.isEmpty()) {
                 Persoon randomGast = gasten.get((int)(Math.random() * gasten.size()));
                 if (randomGast instanceof Gast gast) {
                     gast.activeerGodzilla();
                 }
                 eventBus.triggerHotelEvent(HotelEventType.GODZILLA,
-                    randomGast.getNaam().hashCode(), 0);
+                        randomGast.getNaam().hashCode(), 0);
             }
         }
         hotelPanel.repaint();
@@ -240,8 +240,8 @@ import java.util.Map;
         String randomName = firstNames[(int)(Math.random() * firstNames.length)];
         String randomType = types[(int)(Math.random() * types.length)];
 
-        Gast newGuest = new Gast(randomName, -1, 0,
-                createGuestMovementStrategy(), createEvacuationMovementStrategy());
+        Gast newGuest = new Gast(randomName, -1, 0);
+        newGuest.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy());
         newGuest.setLift(lift);
         newGuest.setHotel(hotel);
         newGuest.setEventBus(eventBus);

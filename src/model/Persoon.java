@@ -1,6 +1,7 @@
 package model;
 
 import model.strategy.IMovementStrategy;
+import model.strategy.MovementContext;
 
 /**
  * Basisklasse voor alle personen (zoals Gasten en Schoonmakers) binnen de simulatie.
@@ -25,8 +26,8 @@ public abstract class Persoon implements TickListener {
 
     // --- STRATEGY PATTERN COMPONENTEN ---
 
-    // De huidige bewegingsstrategie van de persoon (bijv. Normal, Evacuation, Panic)
-    protected IMovementStrategy movementStrategy;
+    // De context beheert de actieve bewegingsstrategie (Normal of Evacuation)
+    protected MovementContext movementContext;
 
     public Persoon(String naam, String type) {
         this.id = volgendeId++;
@@ -39,17 +40,42 @@ public abstract class Persoon implements TickListener {
      * De Persoon weet zelf niet HOE hij loopt, dat bepaalt het strategie-object.
      */
     public void performMovement() {
-        if (movementStrategy != null) {
-            movementStrategy.move(this); // Geef 'zichzelf' mee aan de strategie
+        if (movementContext != null) {
+            movementContext.beweeg(this);   // context kiest de juiste strategie
         }
     }
 
     /**
-     * STRATEGY PATTERN: Verander het gedrag tijdens de simulatie (Runtime binding).
-     * Handig voor wanneer het brandalarm afgaat of een gast van gedachten verandert.
+     * STRATEGY PATTERN: Injecteer de twee strategieën (normaal + evacuatie).
+     * De context start standaard met de normale strategie.
      */
-    public void setMovementStrategy(IMovementStrategy strategy) {
-        this.movementStrategy = strategy;
+    public void setMovementStrategies(IMovementStrategy normal, IMovementStrategy evacuation) {
+        this.movementContext = new MovementContext(normal, evacuation);
+    }
+
+    /**
+     * STRATEGY PATTERN: Wissel tijdens runtime naar normaal gedrag.
+     */
+    public void useNormalStrategy() {
+        if (movementContext != null) {
+            movementContext.useNormalStrategy();
+        }
+    }
+
+    /**
+     * STRATEGY PATTERN: Wissel tijdens runtime naar evacuatiegedrag.
+     */
+    public void useEvacuationStrategy() {
+        if (movementContext != null) {
+            movementContext.useEvacuationStrategy();
+        }
+    }
+
+    /**
+     * Controleer of de evacuatie-strategie momenteel actief is.
+     */
+    public boolean isEvacuating() {
+        return movementContext != null && movementContext.isUsingEvacuationStrategy();
     }
 
     // ------------------------------------

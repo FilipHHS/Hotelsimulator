@@ -51,8 +51,8 @@ public class Gast extends Persoon {
         super(naam, "Gast");
         this.kleur = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
 
-        // STRATEGY PATTERN: Stel standaard loopgedrag in
-        setMovementStrategy(new GastNormalStrategy());
+        // STRATEGY PATTERN: Injecteer normale + evacuatie-strategie in de context
+        setMovementStrategies(new GastNormalStrategy(), new EvacuationMovement());
     }
 
     @Override
@@ -61,9 +61,9 @@ public class Gast extends Persoon {
         if (godzillaTicksRemaining > 0) godzillaTicksRemaining--;
 
         // 2. Bepaal of we van strategie moeten wisselen wegens noodsituaties
-        if (fireAlarmActive && !(movementStrategy instanceof EvacuationMovement)) {
+        if (fireAlarmActive && !isEvacuating()) {
             startEvacuatie();
-            setMovementStrategy(new EvacuationMovement());
+            useEvacuationStrategy();
         }
         else if (!fireAlarmActive && isEvacuatieBegonnen()) {
             resetNaEvacuatie();
@@ -167,7 +167,7 @@ public class Gast extends Persoon {
 
     private void resetNaEvacuatie() {
         setEvacuatieBegonnen(false);
-        setMovementStrategy(new GastNormalStrategy());
+        useNormalStrategy();
         if (state == State.EVACUATIE || state == State.VERLAAT_HOTEL) {
             state = State.WANDELEN;
             setHuidigeActiviteit("🚶 Wandel");

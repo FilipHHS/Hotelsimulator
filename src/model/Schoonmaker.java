@@ -31,8 +31,8 @@ public class Schoonmaker extends Persoon {
         this.destX = 7.5;
         this.destY = 5.5;
 
-        // STRATEGY PATTERN: Stel de standaard loopstrategie in
-        setMovementStrategy(new SchoonmakerNormalStrategy());
+        // STRATEGY PATTERN: Injecteer normale + evacuatie-strategie in de context
+        setMovementStrategies(new SchoonmakerNormalStrategy(), new EvacuationMovement());
 
         System.out.println("[Schoonmaker] " + naam + " is in de Opslag (7,5)");
     }
@@ -42,15 +42,15 @@ public class Schoonmaker extends Persoon {
         updateActiviteitLabel();
 
         // 1. Brandalarm is geactiveerd: Wissel naar vlucht-strategie
-        if (fireAlarmActive && !(movementStrategy instanceof EvacuationMovement)) {
+        if (fireAlarmActive && !isEvacuating()) {
             startEvacuatie();
-            setMovementStrategy(new EvacuationMovement());
+            useEvacuationStrategy();
         }
 
         // 2. Brandalarm is weer voorbij: Reset naar normaal gedrag
         if (!fireAlarmActive && isEvacuatieBegonnen()) {
             setEvacuatieBegonnen(false);
-            setMovementStrategy(new SchoonmakerNormalStrategy());
+            useNormalStrategy();
             this.state = State.VRIJ;
             setHuidigeActiviteit("⏳ Idle");
             this.x = 7.5; // Terug naar opslag
@@ -128,7 +128,7 @@ public class Schoonmaker extends Persoon {
     @Override
     public int getMaxY() { return maxY; }
     @Override
-    public void setStateToLeft() { this.setState(State.BUITEN); } //polymorfismen
+    public void setStateToLeft() { this.setState(State.BUITEN); } //polymorfisme
     public IEventBus getEventBus() { return eventBus; }
 
     // Initialisatie setters
