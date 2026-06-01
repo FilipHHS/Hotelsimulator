@@ -29,9 +29,9 @@ public class HTEClock {
 
         try {
             // Laat alle luisteraars tegelijk reageren op de tick
-            for (TickListener listener : listeners) {
+             for (TickListener listener : listeners) {
                 if (listener != null) {
-                    listener.onTick();
+                    listener.onTick(); // polymorfisme
                 }
             }
         } catch (Exception e) {

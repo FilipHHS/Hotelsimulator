@@ -24,7 +24,6 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
     // Dit houdt de daadwerkelijke status van het systeem bij volgens de acceptatiecriteria
     private String systemState = "IDLE";
 
-    // --- US4.2.b SIMULATOR REFERENTIE ---
     private Simulator simulator;
     /**
      * US4.1: Geeft de huidige status van het systeem terug voor de acceptatietest
@@ -335,5 +334,6 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
     }
 
     public void setSimulator(Simulator simulator) {
+        this.simulator = simulator;
     }
 }

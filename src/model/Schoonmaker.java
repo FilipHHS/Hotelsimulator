@@ -128,7 +128,7 @@ public class Schoonmaker extends Persoon {
     @Override
     public int getMaxY() { return maxY; }
     @Override
-    public void setStateToLeft() { this.setState(State.BUITEN); }
+    public void setStateToLeft() { this.setState(State.BUITEN); } //polymorfismen
     public IEventBus getEventBus() { return eventBus; }
 
     // Initialisatie setters

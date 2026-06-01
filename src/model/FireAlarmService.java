@@ -26,7 +26,7 @@ public class FireAlarmService {
         System.out.println("✓ ✓ ✓  BRANDALARM GERESET - EVACUATIE AFGEROND  ✓ ✓ ✓");
         System.out.println("============================================================\n");
 
-        if (lift != null) lift.deactiveerFireAlarm();
+        if (lift != null) lift.deactiveerFireAlarm(); // polymorfisme
         for (Persoon persoon : hotel.getPersonen()) {
             persoon.deactiveerFireAlarm();
         }

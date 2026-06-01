@@ -249,7 +249,7 @@ public class Gast extends Persoon {
     public int getMaxX() { return maxX; }
     @Override
     public int getMaxY() { return maxY; }
-    public void setStateToLeft() { this.state = State.VERLAAT_HOTEL; }
+    public void setStateToLeft() { this.state = State.VERLAAT_HOTEL; } //polymorfisme
     public void setGridBounds(int maxX, int maxY) { this.maxX = maxX; this.maxY = maxY; }
     public void setLift(Lift lift) { this.lift = lift; }
     public void setHotel(Hotel hotel) { this.hotel = hotel; }

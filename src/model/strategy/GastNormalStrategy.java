@@ -125,12 +125,16 @@ public class GastNormalStrategy implements IMovementStrategy {
             gast.wiltVerdiepingWisselen();
         } else {
             double speed = gast.getActueleSnelheid();
-            // Maak gebruik van de bestemming x van de kamer
-            double kamerX = gast.getHuidigKamer() != null ? gast.getX() : gast.getX(); // fallback
-            // In jouw checkinKamer zet je destX al goed, dus:
-            double dx = gast.getX(); // Blijf op positie als we er zijn
-            gast.setGastState(Gast.State.WANDELEN);
-            gast.setRoomStayTimer(300 + RANDOM.nextInt(300));
+            double kamerX = gast.getDestX(); // de bestemming die in checkinKamer is gezet
+            double dx = kamerX - gast.getX(); // echte afstand tot de kamer
+
+            if (Math.abs(dx) < speed) {
+                gast.setX(kamerX); // snap naar de kamer
+                gast.setGastState(Gast.State.WANDELEN);
+                gast.setRoomStayTimer(300 + RANDOM.nextInt(300));
+            } else {
+                gast.setX(gast.getX() + (dx > 0 ? speed : -speed)); // beweeg richting kamer
+            }
         }
     }
 
