@@ -2,6 +2,10 @@ package model;
 
 import ui.HotelPanel;
 import hotelevents.HotelEventType;
+import model.strategy.EvacuationMovement;
+import model.strategy.GastNormalStrategy;
+import model.strategy.IMovementStrategy;
+import model.strategy.SchoonmakerNormalStrategy;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,13 +15,6 @@ import java.util.Map;
     private boolean running = false;
     private int lastGuestSpawnTime = 0;
     private static final int CHECKOUT_NA_TICKS = 600;
-<<<<<<< Updated upstream
-
-    private FireAlarmService fireAlarmService;
-
-    // Referenties naar model en UI
-=======
->>>>>>> Stashed changes
     private Hotel hotel;                           // Hotel-model met kamers, areas en personen
     private HotelPanel hotelPanel;                 // UI-paneel om te verversen
     private SimulationClock clock;                 // Regelt het aantal ticks (tempo)
@@ -61,12 +58,6 @@ import java.util.Map;
     }
     private void initialiseerPersonen() {
         Area opslagArea = null;
-<<<<<<< Updated upstream
-        this.fireAlarmService = new FireAlarmService(hotel, lift);
-
-        // Zoek eerst handmatig de Lobby en de Opslag (simpele for-loop)
-=======
->>>>>>> Stashed changes
         for (Area area : hotel.getAreas()) {
             if (area.getAreaType() != null) {
                 if (area.getAreaType().equalsIgnoreCase("Lobby")) {
@@ -82,10 +73,7 @@ import java.util.Map;
                 hteClock.addListener(persoon);
             }
             if (persoon instanceof Gast gast) {
-<<<<<<< Updated upstream
-=======
                 gast.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy());
->>>>>>> Stashed changes
                 gast.setLift(lift);
                 gast.setHotel(hotel);
                 gast.setEventBus(eventBus);  // Set event bus
@@ -98,10 +86,7 @@ import java.util.Map;
                 }
             }
             if (persoon instanceof Schoonmaker schoonmaker) {
-<<<<<<< Updated upstream
-=======
                 schoonmaker.setMovementStrategies(createCleanerMovementStrategy(), createEvacuationMovementStrategy());
->>>>>>> Stashed changes
                 schoonmaker.setLift(lift);
                 schoonmaker.setHotel(hotel);
                 schoonmaker.setEventBus(eventBus);
@@ -255,26 +240,22 @@ import java.util.Map;
         String randomName = firstNames[(int)(Math.random() * firstNames.length)];
         String randomType = types[(int)(Math.random() * types.length)];
 
+        Gast newGuest = new Gast(randomName, -1, 0,
+                createGuestMovementStrategy(), createEvacuationMovementStrategy());
+        newGuest.setLift(lift);
+        newGuest.setHotel(hotel);
+        newGuest.setEventBus(eventBus);
+        newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+
+        double startX = -1.0;
         double startY = (lobbyArea.getY() - 1) + 0.5;
-        Gast newGuest = new GastBuilder()
-                .naam(randomName)
-                .hotel(hotel)
-                .lift(lift)
-                .eventBus(eventBus)
-                .gridBounds(hotel.getBreedte(), hotel.getHoogte())
-                .startPos(-1.0, startY)
-                .build();
+        newGuest.setStartPositie(startX, startY);
 
         hteClock.addListener(newGuest);
         hotel.addPersoon(newGuest);
 
         System.out.println("[Simulator] Nieuwe gast '" + randomName + "' komt aan (kamertype: " + randomType + ")");
     }
-<<<<<<< Updated upstream
-
-    // --- MANUELE CHECKIN / CHECKOUTS ---
-
-=======
     private IMovementStrategy createGuestMovementStrategy() {
         return new GastNormalStrategy();
     }
@@ -286,7 +267,6 @@ import java.util.Map;
     private IMovementStrategy createEvacuationMovementStrategy() {
         return new EvacuationMovement();
     }
->>>>>>> Stashed changes
     public boolean gastCheckin(String naam, String type) {
         for (Persoon persoon : hotel.getPersonen()) {
             if (persoon instanceof Gast gast && persoon.getNaam().equals(naam)) {
@@ -306,17 +286,6 @@ import java.util.Map;
         }
     }
     public void triggerFireAlarm() {
-<<<<<<< Updated upstream
-        fireAlarmService.trigger();
-    }
-
-
-    public void clearFireAlarm() {
-        fireAlarmService.clear();
-    }
-    // --- GETTERS & SETTERS (ALGEMENE BESTURING) ---
-
-=======
         System.out.println("\n============================================================");
         System.out.println("🚨 🚨 🚨  BRANDALARM GEACTIVEERD - EVACUATIE BEGONNEN  🚨 🚨 🚨");
         System.out.println("============================================================\n");
@@ -340,7 +309,6 @@ import java.util.Map;
             persoon.deactiveerFireAlarm();
         }
     }
->>>>>>> Stashed changes
     public void start() { this.running = true; clock.start(); }
     public void pause() { this.running = false; clock.stop(); }
     public boolean isRunning() { return running; }
