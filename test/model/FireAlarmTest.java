@@ -1,6 +1,7 @@
 package model;
 
 import model.*;
+import model.personen.*;
 import ui.HotelPanel;
 
 /**

@@ -105,58 +105,6 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
         }
     }
 
-    /**
-     * Subscribe een listener op alle events (legacy)
-     */
-    public void subscribe(TickListener listener) {
-        if (!listeners.contains(listener)) {
-            listeners.add(listener);
-            logEvent("SUBSCRIBE: " + listener.getClass().getSimpleName());
-        }
-    }
-
-    /**
-     * Subscribe een HotelEventListener
-     */
-    public void registerHotelEventListener(HotelEventListener listener) {
-        if (!hotelListeners.contains(listener)) {
-            hotelListeners.add(listener);
-            logEvent("REGISTER HOTEL LISTENER: " + listener.getClass().getSimpleName());
-        }
-    }
-
-    /**
-     * Unsubscribe een listener
-     */
-    public void unsubscribe(TickListener listener) {
-        listeners.remove(listener);
-        logEvent("UNSUBSCRIBE: " + listener.getClass().getSimpleName());
-    }
-
-    /**
-     * Deregister een HotelEventListener
-     */
-    public void deregisterHotelEventListener(HotelEventListener listener) {
-        hotelListeners.remove(listener);
-        logEvent("DEREGISTER HOTEL LISTENER: " + listener.getClass().getSimpleName());
-    }
-
-    /**
-     * Publish een event naar alle listeners (legacy string-based)
-     */
-    public void publishEvent(String eventName, Object data) {
-        System.out.println("\n🎬 EVENT PUBLISHED: " + eventName);
-        logEvent("EVENT: " + eventName);
-
-        for (TickListener listener : listeners) {
-            System.out.println("  → Notificeer: " + listener.getClass().getSimpleName());
-        }
-    }
-
-    /**
-     * Trigger een HotelEvent met type, guestId, en data
-     * US4.2.A: Exception handling
-     */
     public void triggerHotelEvent(HotelEventType eventType, int guestId, int data) {
         triggerHotelEvent(eventType, guestId, (int) System.currentTimeMillis(), data);
     }
@@ -266,9 +214,6 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
         }
     }
 
-    /**
-     * Get emoji voor event type
-     */
     private String getEventEmoji(HotelEventType type) {
         switch (type) {
             case CHECK_IN: return "✅";
@@ -284,55 +229,21 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
         }
     }
 
-    /**
-     * Log een event voor debugging
-     */
     private void logEvent(String message) {
         eventLog.add("[" + System.currentTimeMillis() + "] " + message);
     }
-
-    /**
-     * Log een error voor debugging
-     */
     private void logError(String message) {
         errorLog.add("[" + System.currentTimeMillis() + "] " + message);
     }
-
-    /**
-     * Geef event log terug
-     */
     public List<String> getEventLog() {
         return new ArrayList<>(eventLog);
     }
-
-    /**
-     * Geef error log terug
-     */
     public List<String> getErrorLog() {
         return new ArrayList<>(errorLog);
     }
-
-    /**
-     * Wis event log
-     */
     public void clearEventLog() {
         eventLog.clear();
     }
-
-    /**
-     * Wis error log
-     */
-    public void clearErrorLog() {
-        errorLog.clear();
-    }
-
-    /**
-     * Geef aantal getriggerde events
-     */
-    public int getEventCount() {
-        return eventCounter;
-    }
-
     public void setSimulator(Simulator simulator) {
         this.simulator = simulator;
     }

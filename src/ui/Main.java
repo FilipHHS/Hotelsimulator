@@ -1,6 +1,7 @@
 package ui;
 
 import model.*;
+import model.personen.*;
 import javax.swing.*;
 import javax.swing.WindowConstants;
 import java.awt.Color;

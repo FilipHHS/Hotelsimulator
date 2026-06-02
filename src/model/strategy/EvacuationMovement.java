@@ -1,6 +1,6 @@
 package model.strategy;
 
-import model.Persoon;
+import model.personen.Persoon;
 
 
 /**
@@ -13,7 +13,7 @@ public class EvacuationMovement implements IMovementStrategy {
     private static final double LOBBY_X = 1.5;
 
     @Override
-    public void move(Persoon persoon) {
+    public void beweeg(Persoon persoon) {
         double pX = persoon.getX();
         double pY = persoon.getY();
 

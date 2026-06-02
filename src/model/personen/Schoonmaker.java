@@ -1,4 +1,6 @@
-package model;
+package model.personen;
+
+import model.*;
 
 import hotelevents.HotelEventType;
 import model.strategy.SchoonmakerNormalStrategy;

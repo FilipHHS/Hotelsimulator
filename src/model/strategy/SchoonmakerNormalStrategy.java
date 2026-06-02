@@ -2,14 +2,14 @@ package model.strategy;
 
 import hotelevents.HotelEventType;
 import model.Kamer;
-import model.Persoon;
-import model.Schoonmaker;
+import model.personen.Persoon;
+import model.personen.Schoonmaker;
 import model.Area;
 
 public class SchoonmakerNormalStrategy implements IMovementStrategy {
 
     @Override
-    public void move(Persoon persoon) {
+    public void beweeg(Persoon persoon) {
         if (!(persoon instanceof Schoonmaker)) return;
         Schoonmaker sm = (Schoonmaker) persoon;
 

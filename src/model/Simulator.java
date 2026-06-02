@@ -1,5 +1,7 @@
 package model;
 
+import model.personen.*;
+
 import ui.HotelPanel;
 import hotelevents.HotelEventType;
 import model.strategy.EvacuationMovement;

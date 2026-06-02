@@ -1,14 +1,15 @@
 package ui;
 
+import model.personen.*;
+
 import model.Area;
 import model.EventBusImpl;
 import model.Hotel;
-import model.Gast;
-import model.Persoon;
+import model.personen.Gast;
+import model.personen.Persoon;
 import model.Lift;
-import model.Schoonmaker;
+import model.personen.Schoonmaker;
 import model.Kamer;
-import model.AreaType;
 
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
@@ -440,8 +441,8 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     // --- HULPMETHODEN VOOR LABELS EN KLEUREN (MODERNE SWITCH) ---
 
     private String getLabel(Area area) {
-        AreaType type = AreaType.fromString(area.getAreaType());
-        if (type == AreaType.ROOM) return getKamerLabel(area);
+        Area.Type type = area.getType();
+        if (type == Area.Type.ROOM) return getKamerLabel(area);
         return type.getLabel();
     }
 
@@ -455,8 +456,8 @@ public class HotelPanel extends JPanel implements MouseInputListener {
     }
 
     private Color getKleur(Area area) {
-        AreaType type = AreaType.fromString(area.getAreaType());
-        if (type == AreaType.ROOM) {
+        Area.Type type = area.getType();
+        if (type == Area.Type.ROOM) {
             String c = area.getClassification();
             if (c == null)                        return new Color(200, 230, 255);
             if (c.equalsIgnoreCase("PentHouse"))  return new Color(120,   0,   0);

@@ -1,8 +1,10 @@
 package ui;
 
-import model.Gast;
+import model.personen.*;
+
+import model.personen.Gast;
 import model.Hotel;
-import model.Persoon;
+import model.personen.Persoon;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;

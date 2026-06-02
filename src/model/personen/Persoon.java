@@ -1,4 +1,6 @@
-package model;
+package model.personen;
+
+import model.TickListener;
 
 import model.strategy.IMovementStrategy;
 import model.strategy.MovementContext;

@@ -1,10 +1,10 @@
 package model.strategy;
 
-import model.Persoon;
+import model.personen.Persoon;
 
 /**
  * De blauwdruk voor alle loop- en navigatiestrategieën.
  */
 public interface IMovementStrategy {
-    void move(Persoon persoon);
+    void beweeg(Persoon persoon);
 }

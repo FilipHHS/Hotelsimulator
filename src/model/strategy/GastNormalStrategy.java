@@ -1,14 +1,14 @@
 package model.strategy;
 
-import model.Gast;
-import model.Persoon;
+import model.personen.Gast;
+import model.personen.Persoon;
 import java.util.Random;
 
 public class GastNormalStrategy implements IMovementStrategy {
     private static final Random RANDOM = new Random();
 
     @Override
-    public void move(Persoon persoon) {
+    public void beweeg(Persoon persoon) {
         if (!(persoon instanceof Gast)) return;
         Gast gast = (Gast) persoon;
 

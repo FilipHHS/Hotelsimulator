@@ -1,4 +1,6 @@
-package model;
+package model.personen;
+
+import model.*;
 
 import java.util.Objects;
 

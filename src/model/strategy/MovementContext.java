@@ -1,6 +1,6 @@
 package model.strategy;
 
-import model.Persoon;
+import model.personen.Persoon;
 
 /**
  * Context class voor het Strategy Pattern.
@@ -34,7 +34,7 @@ public class MovementContext {
 
     public void beweeg(Persoon persoon) { // Enige methode waarmee de context beweging uitvoert.
         if (currentStrategy != null) { // Controleer of er een actieve strategy is.
-            currentStrategy.move(persoon); // Polymorfisme: Java kiest de juiste concrete beweeg-methode.
+            currentStrategy.beweeg(persoon); // Polymorfisme: Java kiest de juiste concrete beweeg-methode.
         }
     }
 

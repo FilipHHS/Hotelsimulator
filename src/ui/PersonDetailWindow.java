@@ -1,8 +1,10 @@
 package ui;
 
-import model.Gast;
-import model.Persoon;
-import model.Schoonmaker;
+import model.personen.*;
+
+import model.personen.Gast;
+import model.personen.Persoon;
+import model.personen.Schoonmaker;
 
 import javax.swing.*;
 import java.awt.*;
