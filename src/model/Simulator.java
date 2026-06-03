@@ -330,24 +330,7 @@ public class Simulator {
     private IMovementStrategy createEvacuationMovementStrategy() {
         return new EvacuationMovement();
     }
-    public boolean gastCheckin(String naam, String type) {
-        for (Persoon persoon : hotel.getPersonen()) {
-            if (persoon instanceof Gast gast && persoon.getNaam().equals(naam)) {
-                Kamer kamer = hotel.zoekVrijeKamer(type);
-                if (kamer != null) {
-                    return gast.checkinKamer(kamer);
-                }
-            }
-        }
-        return false;
-    }
-    public void gastCheckout(String naam) {
-        for (Persoon persoon : hotel.getPersonen()) {
-            if (persoon instanceof Gast gast && persoon.getNaam().equals(naam)) {
-                gast.checkoutKamer();
-            }
-        }
-    }
+
     public void triggerFireAlarm() {
         System.out.println("\n============================================================");
         System.out.println("🚨 🚨 🚨  BRANDALARM GEACTIVEERD - EVACUATIE BEGONNEN  🚨 🚨 🚨");
@@ -378,5 +361,4 @@ public class Simulator {
     public SimulationClock getClock() { return clock; }
     public Lift getLift() { return lift; }
     public EventBusImpl getEventBus() { return eventBus; }  // Get event bus for UI/debug
-    public void resetClock() { this.clock.reset(); }
 }

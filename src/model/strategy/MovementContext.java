@@ -15,13 +15,10 @@ public class MovementContext {
     private IMovementStrategy normalStrategy; // De normale strategy, bijvoorbeeld GastNormalStrategy.
     private IMovementStrategy evacuationStrategy; // De strategy voor brandalarm/evacuatie.
 
-
-    //constructor
     public MovementContext(IMovementStrategy normalStrategy, IMovementStrategy evacuationStrategy) { // Constructor krijgt strategies van buitenaf.
         setStrategies(normalStrategy, evacuationStrategy); // Sla de meegegeven strategies op.
         useNormalStrategy(); // Start standaard met normaal beweeggedrag.
     }
-
     /**
      * Strategy-injectie: van buitenaf worden de concrete algorithms meegegeven.
      */
@@ -30,7 +27,6 @@ public class MovementContext {
         this.evacuationStrategy = evacuationStrategy; // Bewaar de evacuatie-strategy.
         this.currentStrategy = normalStrategy; // Zet de actieve strategy terug naar normaal.
     } // Einde setStrategies.
-
 
     public void beweeg(Persoon persoon) { // Enige methode waarmee de context beweging uitvoert.
         if (currentStrategy != null) { // Controleer of er een actieve strategy is.

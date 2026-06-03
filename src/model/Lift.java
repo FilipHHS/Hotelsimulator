@@ -139,10 +139,7 @@ public class Lift implements TickListener {
     // --- GETTERS & SETTERS ---
     public double getX() { return x; }
     public double getY() { return y; }
-    public int getCurrentFloor() { return currentFloor; }
     public boolean isIdle() { return state == LiftState.AT_STATION; }
     public boolean isFireAlarmActive() { return fireAlarmActive; }
-    public List<Persoon> getPassagiers() { return new ArrayList<>(passagiers); }
-    public int getDestination(Persoon p) { return passengerDestinations.getOrDefault(p, -1); }
     public void setEventBus(IEventBus eventBus) { this.eventBus = eventBus; }
 }

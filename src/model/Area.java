@@ -51,10 +51,7 @@ public class Area {
     // --- Standaard Getters ---
     public String getAreaType() { return AreaType; }
     public Type getType() { return Type.fromString(AreaType); }
-    public String getPosition() { return Position; }
-    public String getDimension() { return Dimension; }
     public String getClassification() { return Classification; }
-    public int getCapacity() { return Capacity; }
 
     /**
      * Haalt de X-coördinaat op uit de Position string.
