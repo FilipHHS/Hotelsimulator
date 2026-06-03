@@ -191,7 +191,14 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
                     logEvent("🦖 GODZILLA: Monster attack! Guest " + event.getGuestId());
                     break;
                 case NEED_FOOD:
-                    logEvent("🍽️ NEED_FOOD: Guest " + event.getGuestId() + " wants food");
+                    if (event.getGuestId() == 0) {
+                        logEvent("🍽️ NEED_FOOD: alle gasten naar restaurant (" + event.getData() + " gasten)");
+                    } else {
+                        logEvent("🍽️ NEED_FOOD: Guest " + event.getGuestId() + " wants food");
+                    }
+                    if (simulator != null) {
+                        simulator.stuurAlleGastenNaarRestaurant();
+                    }
                     break;
                 case GOTO_CINEMA:
                     logEvent("🎬 GOTO_CINEMA: Guest " + event.getGuestId() + " going to cinema");

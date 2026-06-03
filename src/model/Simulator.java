@@ -24,7 +24,10 @@ public class Simulator {
     private EventBusImpl eventBus;                  // Event system (HotelEventType)
     private Lift lift;
     private Area lobbyArea;
+    private Area restaurantArea;
+    private int foodEventTimer = 0;
     private Map<String, Integer> guestCheckInTime = new HashMap<>();
+    private static final int FOOD_EVENT_INTERVAL = 450;
 
     public Simulator(Hotel hotel, HotelPanel hotelPanel) {
         this.hotel = hotel;
@@ -64,6 +67,9 @@ public class Simulator {
             if (area.getAreaType() != null) {
                 if (area.getAreaType().equalsIgnoreCase("Lobby")) {
                     this.lobbyArea = area;
+                }
+                if (area.getAreaType().equalsIgnoreCase("Restaurant")) {
+                    this.restaurantArea = area;
                 }
                 if (area.getAreaType().equalsIgnoreCase("Storage") || area.getAreaType().equalsIgnoreCase("Opslag")) {
                     opslagArea = area;
@@ -113,6 +119,7 @@ public class Simulator {
 
         autoCheckInGuests();
         autoCheckoutGuests();
+        triggerFoodEventAlsNodig();
 
         if (!isEvacuatieActief()) {
             lastGuestSpawnTime++;
@@ -220,6 +227,53 @@ public class Simulator {
         return false;
     }
 
+    private void triggerFoodEventAlsNodig() {
+        if (restaurantArea == null || isEvacuatieActief()) {
+            foodEventTimer = 0;
+            return;
+        }
+
+        foodEventTimer++;
+        if (foodEventTimer < FOOD_EVENT_INTERVAL) {
+            return;
+        }
+        foodEventTimer = 0;
+
+        List<Gast> gasten = hotel.getPersonen().stream()
+                .filter(p -> p instanceof Gast)
+                .map(p -> (Gast) p)
+                .toList();
+
+        if (gasten.isEmpty()) {
+            return;
+        }
+
+        eventBus.triggerHotelEvent(HotelEventType.NEED_FOOD, 0, gasten.size());
+    }
+
+    public void stuurAlleGastenNaarRestaurant() {
+        if (restaurantArea == null || isEvacuatieActief()) {
+            return;
+        }
+
+        double restaurantX = getAreaCenterX(restaurantArea);
+        double restaurantY = getAreaCenterY(restaurantArea);
+
+        for (Persoon persoon : new ArrayList<>(hotel.getPersonen())) {
+            if (persoon instanceof Gast gast) {
+                gast.gaNaarRestaurantDoorEvent(restaurantX, restaurantY);
+            }
+        }
+    }
+
+    private double getAreaCenterX(Area area) {
+        return area.getX() - 1 + area.getBreedte() / 2.0;
+    }
+
+    private double getAreaCenterY(Area area) {
+        return area.getY() - 1 + area.getHoogte() / 2.0;
+    }
+
     private boolean isEvacuatieActief() {
         if (lift != null && lift.isFireAlarmActive()) {
             return true;
@@ -242,16 +296,17 @@ public class Simulator {
         String randomName = firstNames[(int)(Math.random() * firstNames.length)];
         String randomType = types[(int)(Math.random() * types.length)];
 
-        Gast newGuest = new Gast(randomName, -1, 0);
-        newGuest.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy());
-        newGuest.setLift(lift);
-        newGuest.setHotel(hotel);
-        newGuest.setEventBus(eventBus);
-        newGuest.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
-
         double startX = -1.0;
         double startY = (lobbyArea.getY() - 1) + 0.5;
-        newGuest.setStartPositie(startX, startY);
+
+        Gast newGuest = new GastBuilder()
+                .naam(randomName)
+                .hotel(hotel)
+                .lift(lift)
+                .eventBus(eventBus)
+                .gridBounds(hotel.getBreedte(), hotel.getHoogte())
+                .startPos(startX, startY)
+                .build();
 
         hteClock.addListener(newGuest);
         hotel.addPersoon(newGuest);

@@ -1,7 +1,6 @@
 package model;
 
 import model.personen.*;
-
 import hotelevents.HotelEventType;
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -219,9 +219,12 @@ public class Main {
     private static void addTestGuests(Hotel hotel) {
         String[] namen = {"Alice", "Bob", "Charlie", "Diana", "Frank", "Grace"};
         for (String naam : namen) {
-            Gast g = new Gast(naam, -1, 0);
-            g.setHotel(hotel);
-            g.setStartPositie(-1.0, 6.5);
+            Gast g = new GastBuilder()
+                    .naam(naam)
+                    .hotel(hotel)
+                    .gridBounds(hotel.getBreedte(), hotel.getHoogte())
+                    .startPos(-1.0, 6.5)
+                    .build();
             hotel.addPersoon(g);
         }
     }

@@ -15,6 +15,7 @@ public class Gast extends Persoon {
     public static final double LIFT_WAIT_X = 1.5;
     public static final double TRAP_X = 8.5;
     private static final int LOUNGE_CHILL_TICKS = 20;
+    private static final int RESTAURANT_WACHT_TICKS = 120;
 
     private int maxX, maxY;
     private Hotel hotel;
@@ -45,6 +46,7 @@ public class Gast extends Persoon {
     }
 
     private State state = State.WANDELEN;
+    private State stateNaVerdiepingWissel = State.WANDELEN;
 
     public Gast(String naam, int ignoreX, int ignoreY) {
         super(naam, "Gast");
@@ -103,9 +105,7 @@ public class Gast extends Persoon {
     }
 
     public void gaatNaarFaciliteit(String type, double fX, double fY) {
-        this.huidigerFaciliteitType = type;
-        this.faciliteitX = fX;
-        this.faciliteitY = fY;
+        startFaciliteitBezoek(type, fX, fY);
 
         if (eventBus != null) {
             int guestId = getNaam().hashCode();
@@ -115,9 +115,27 @@ public class Gast extends Persoon {
                 case "fitness", "gym" -> eventBus.triggerHotelEvent(HotelEventType.GOTO_FITNESS, guestId, 0);
             }
         }
+    }
 
-        if ((int)fY != (int)y) wiltVerdiepingWisselen();
-        else this.state = State.GAAT_NAAR_FACILITEIT;
+    public void gaNaarRestaurantDoorEvent(double fX, double fY) {
+        startFaciliteitBezoek("Restaurant", fX, fY);
+        this.faciliteitsBezoekDuur = RESTAURANT_WACHT_TICKS;
+    }
+
+    private void startFaciliteitBezoek(String type, double fX, double fY) {
+        this.huidigerFaciliteitType = type;
+        this.faciliteitX = fX;
+        this.faciliteitY = fY;
+        this.doelVerdieping = (int) fY;
+
+        if (inLift) {
+            this.stateNaVerdiepingWissel = State.GAAT_NAAR_FACILITEIT;
+            this.state = State.IN_LIFT;
+        } else if ((int)fY != (int)y) {
+            wisselVerdiepingVoor(State.GAAT_NAAR_FACILITEIT);
+        } else {
+            this.state = State.GAAT_NAAR_FACILITEIT;
+        }
     }
 
     public void activeerGodzilla() {
@@ -134,6 +152,11 @@ public class Gast extends Persoon {
     // --- HELPER METHODES VOOR DE STRATEGIEËN ---
 
     public void wiltVerdiepingWisselen() {
+        wisselVerdiepingVoor(state);
+    }
+
+    private void wisselVerdiepingVoor(State vervolgState) {
+        this.stateNaVerdiepingWissel = vervolgState;
         this.usesTrap = RANDOM.nextBoolean();
         this.destX = usesTrap ? TRAP_X : LIFT_WAIT_X;
         this.state = State.NAAR_LIFT_WACHTEN;
@@ -187,7 +210,7 @@ public class Gast extends Persoon {
         }
 
         switch (state) {
-            case WANDELEN -> setHuidigeActiviteit(loungeStayTicks >= LOUNGE_CHILL_TICKS ? "🛋️ Chill" : "🚶 Wandel");
+            case WANDELEN -> setHuidigeActiviteit(huidigKamer != null ? "🛏️ In kamer" : (loungeStayTicks >= LOUNGE_CHILL_TICKS ? "🛋️ Chill" : "🚶 Wandel"));
             case NAAR_LIFT_WACHTEN -> setHuidigeActiviteit("⏳ Wacht Lift");
             case WACHTEN_OP_VERVOER -> setHuidigeActiviteit("⏳ Wachten op lift");
             case GAAT_NAAR_FACILITEIT -> setHuidigeActiviteit("🚶 > Faciliteit");
@@ -223,6 +246,8 @@ public class Gast extends Persoon {
     // --- GETTERS & SETTERS (Voor de Strategie) ---
     public State getGastState() { return state; }
     public void setGastState(State state) { this.state = state; }
+    public State getStateNaVerdiepingWissel() { return stateNaVerdiepingWissel; }
+    public void hervatStateNaVerdiepingWissel() { this.state = stateNaVerdiepingWissel; }
     public boolean isInLift() { return inLift; }
     public void setInLift(boolean inLift) { this.inLift = inLift; }
     public Lift getLift() { return lift; }

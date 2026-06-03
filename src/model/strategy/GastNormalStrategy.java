@@ -40,7 +40,7 @@ public class GastNormalStrategy implements IMovementStrategy {
                 gast.getLift().verwijderGast(gast);
                 gast.setInLift(false);
                 gast.setY(gast.getDoelVerdieping() + 0.5);
-                gast.setGastState(Gast.State.WANDELEN);
+                gast.hervatStateNaVerdiepingWissel();
             }
         }
     }
@@ -50,17 +50,25 @@ public class GastNormalStrategy implements IMovementStrategy {
             gast.setRoomStayTimer(gast.getRoomStayTimer() - 1);
             return;
         }
-
-        if (gast.getStapsInRichting() >= gast.getMaxStapsRichting()) {
-            int keuze = RANDOM.nextInt(10);
-            if (keuze < 4) gast.setX(Math.max(0.5, gast.getX() - 3));
-            else if (keuze < 8) gast.setX(Math.min(gast.getMaxX() - 1.5, gast.getX() + 3));
-            gast.setStapsInRichting(0);
-            gast.setMaxStapsRichting(RANDOM.nextInt(3) + 2);
+        if (gast.getHuidigKamer() != null) {
+            return;
         }
 
         double speed = gast.getActueleSnelheid();
-        // Simpeler: loop direct naar een willekeurige kant op basis van stapsInRichting
+        boolean doelBereikt = Math.abs(gast.getDestX() - gast.getX()) <= speed;
+
+        if (doelBereikt || gast.getStapsInRichting() >= gast.getMaxStapsRichting()) {
+            int keuze = RANDOM.nextInt(10);
+            double nieuwDoel = gast.getX();
+            if (keuze < 4) nieuwDoel = gast.getX() - 3;
+            else if (keuze < 8) nieuwDoel = gast.getX() + 3;
+
+            gast.setDestX(beperkBinnenHotel(nieuwDoel, gast));
+            gast.setStapsInRichting(0);
+            gast.setMaxStapsRichting(RANDOM.nextInt(10) + 8);
+        }
+
+        beweegNaarX(gast, gast.getDestX());
         gast.setStapsInRichting(gast.getStapsInRichting() + 1);
 
         if (RANDOM.nextDouble() < 0.02) gast.wiltVerdiepingWisselen();
@@ -82,13 +90,18 @@ public class GastNormalStrategy implements IMovementStrategy {
 
     private void wachtOpVervoer(Gast gast) {
         if (gast.isUsesTrap()) {
-            int direction = (gast.getY() >= gast.getMaxY() - 1) ? -1 : (gast.getY() <= 1 ? 1 : (RANDOM.nextBoolean() ? 1 : -1));
+            int direction = bepaalTrapRichting(gast);
             gast.setY(((int)gast.getY() + direction) + 0.5);
-            gast.setGastState(Gast.State.WANDELEN);
+            gast.hervatStateNaVerdiepingWissel();
         } else if (gast.getLift() != null && Math.abs(gast.getLift().getY() - gast.getY()) < 1.0 && gast.getLift().isIdle()) {
-            int nieuwDoel = RANDOM.nextInt(gast.getMaxY());
-            if (nieuwDoel == (int)gast.getY()) {
-                nieuwDoel = (nieuwDoel + 1) % gast.getMaxY();
+            int nieuwDoel;
+            if (gast.getStateNaVerdiepingWissel() != Gast.State.WANDELEN) {
+                nieuwDoel = gast.getDoelVerdieping();
+            } else {
+                nieuwDoel = RANDOM.nextInt(gast.getMaxY());
+                if (nieuwDoel == (int)gast.getY()) {
+                    nieuwDoel = (nieuwDoel + 1) % gast.getMaxY();
+                }
             }
             gast.setDoelVerdieping(nieuwDoel);
 
@@ -106,7 +119,9 @@ public class GastNormalStrategy implements IMovementStrategy {
         if (Math.abs(dx) < speed) {
             gast.setX(gast.getFaciliteitX());
             gast.setGastState(Gast.State.IN_FACILITEIT);
-            gast.setFaciliteitsBezoekDuur(20 + RANDOM.nextInt(30));
+            if (gast.getFaciliteitsBezoekDuur() <= 0) {
+                gast.setFaciliteitsBezoekDuur(20 + RANDOM.nextInt(30));
+            }
         } else {
             gast.setX(gast.getX() + ((dx > 0) ? speed : -speed));
         }
@@ -115,9 +130,19 @@ public class GastNormalStrategy implements IMovementStrategy {
     private void zitInFaciliteit(Gast gast) {
         gast.setFaciliteitsBezoekDuur(gast.getFaciliteitsBezoekDuur() - 1);
         if (gast.getFaciliteitsBezoekDuur() <= 0) {
-            gast.setGastState(Gast.State.WANDELEN);
             gast.setHuidigerFaciliteitType(null);
+            if (gast.getHuidigKamer() != null) {
+                gast.setDestX(getAreaCenterX(gast.getHuidigKamer().getArea()));
+                gast.setDoelVerdieping(gast.getHuidigKamer().getArea().getY() - 1);
+                gast.setGastState(Gast.State.GAAT_NAAR_KAMER);
+            } else {
+                gast.setGastState(Gast.State.WANDELEN);
+            }
         }
+    }
+
+    private double getAreaCenterX(model.Area area) {
+        return area.getX() - 1 + area.getBreedte() / 2.0;
     }
 
     private void beweegNaarKamer(Gast gast) {
@@ -157,5 +182,27 @@ public class GastNormalStrategy implements IMovementStrategy {
     private void beweegNaarExit(Gast gast) {
         double speed = gast.getActueleSnelheid();
         gast.setX(gast.getX() - speed);
+    }
+
+    private void beweegNaarX(Gast gast, double targetX) {
+        double speed = gast.getActueleSnelheid();
+        double dx = targetX - gast.getX();
+
+        if (Math.abs(dx) <= speed) {
+            gast.setX(targetX);
+        } else {
+            gast.setX(gast.getX() + Math.signum(dx) * speed);
+        }
+    }
+
+    private double beperkBinnenHotel(double targetX, Gast gast) {
+        return Math.max(0.5, Math.min(gast.getMaxX() - 1.5, targetX));
+    }
+
+    private int bepaalTrapRichting(Gast gast) {
+        if (gast.getStateNaVerdiepingWissel() != Gast.State.WANDELEN) {
+            return gast.getDoelVerdieping() > (int) gast.getY() ? 1 : -1;
+        }
+        return (gast.getY() >= gast.getMaxY() - 1) ? -1 : (gast.getY() <= 1 ? 1 : (RANDOM.nextBoolean() ? 1 : -1));
     }
 }
