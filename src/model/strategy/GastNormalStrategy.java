@@ -169,9 +169,9 @@ public class GastNormalStrategy implements IMovementStrategy {
             gast.wiltVerdiepingWisselen();
         } else {
             double speed = gast.getActueleSnelheid();
-            double dx = 1.5 - gast.getX();
+            double dx = LOBBY_X - gast.getX();
             if (Math.abs(dx) < speed) {
-                gast.setX(1.5);
+                gast.setX(LOBBY_X);
                 gast.setGastState(Gast.State.VERLAAT_HOTEL);
             } else {
                 gast.setX(gast.getX() + ((dx > 0) ? speed : -speed));
@@ -196,7 +196,7 @@ public class GastNormalStrategy implements IMovementStrategy {
     }
 
     private double beperkBinnenHotel(double targetX, Gast gast) {
-        return Math.max(0.5, Math.min(gast.getMaxX() - 1.5, targetX));
+        return Math.max(RAND_MARGE, Math.min(gast.getMaxX() - RECHTER_MARGE, targetX));
     }
 
     private int bepaalTrapRichting(Gast gast) {
