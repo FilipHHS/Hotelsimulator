@@ -37,6 +37,16 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
      * en voert de bijbehorende interne logica uit.
      * US4.2.A: Robuuste foutafhandeling voor null/corrupte data
      */
+    /**
+     * US4.2.b: bepaalt of een DLL-event alleen verwerkt mag worden
+     * wanneer de simulatie in status 'Running' is.
+     * Uitbreidbaar: voeg hier extra Running-only events toe zonder
+     * de hoofdmethode te wijzigen (Open/Closed-principe).
+     */
+    private boolean vereistRunningStatus(String dllEventName) {
+        return "ProcessData".equalsIgnoreCase(dllEventName);
+    }
+
     public void handleExternalDLLEvent(String dllEventName) {
         try {
             // NULL check
@@ -62,13 +72,13 @@ public class EventBusImpl implements HotelEventListener, IEventBus {
                 }
             }
 
-            if ("ProcessData".equalsIgnoreCase(dllEventName)) {
-                if (!simIsRunning) {
-                    String warningMsg = "ILLOGICAL_DLL_EVENT: '" + dllEventName + "' geweigerd — simulatie niet in RUNNING status";
-                    System.out.println("  ❌ [VALIDATIE] " + warningMsg);
-                    logEvent(warningMsg);
-                    return;
-                }
+            // US4.2.b: sommige events zijn alleen geldig in status 'Running'.
+            if (vereistRunningStatus(dllEventName) && !simIsRunning) {
+                String warningMsg = "ILLOGICAL_DLL_EVENT: '" + dllEventName
+                        + "' is alleen geldig in status 'Running', maar de simulatie is 'Stopped' — event geweigerd.";
+                System.out.println("  ❌ [VALIDATIE] " + warningMsg);
+                logEvent(warningMsg);
+                return;   // status blijft ongewijzigd (blijft 'Stopped')
             }
 
             // Schakel tussen de specifieke events genoemd in de User Story
