@@ -6,6 +6,9 @@ import java.util.Random;
 
 public class GastNormalStrategy implements IMovementStrategy {
     private static final Random RANDOM = new Random();
+    private static final double LOBBY_X = 1.5;
+    private static final double RAND_MARGE = 0.5;
+    private static final double RECHTER_MARGE = 1.5;
 
     @Override
     public void beweeg(Persoon persoon) {

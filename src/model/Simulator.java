@@ -115,7 +115,13 @@ public class Simulator {
         }
 
         hteClock.tick();
-        hotel.getPersonen().removeIf(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0);
+        List<Persoon> teVerwijderen = hotel.getPersonen().stream()
+                .filter(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0)
+                .toList();
+        for (Persoon persoon : teVerwijderen) {
+            hteClock.removeListener(persoon);
+        }
+        hotel.getPersonen().removeAll(teVerwijderen);
 
         autoCheckInGuests();
         autoCheckoutGuests();
