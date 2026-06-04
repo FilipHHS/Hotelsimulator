@@ -42,7 +42,7 @@ public class Gast extends Persoon {
     public enum State {
         WANDELEN, NAAR_LIFT_WACHTEN, WACHTEN_OP_VERVOER, IN_LIFT,
         GAAT_NAAR_FACILITEIT, IN_FACILITEIT, GAAT_NAAR_LOBBY,
-        GAAT_NAAR_KAMER, VERLAAT_HOTEL, EVACUATIE
+        GAAT_NAAR_KAMER, VERLAAT_HOTEL, EVACUATIE, BUITEN
     }
 
     private State state = State.WANDELEN;
@@ -68,6 +68,11 @@ public class Gast extends Persoon {
         }
         else if (!fireAlarmActive && isEvacuatieBegonnen()) {
             resetNaEvacuatie();
+        }
+
+        if (fireAlarmActive && state == State.BUITEN) {
+            updateActiviteitLabel();
+            return; // Veilig buiten, blijf stilstaan tot het alarm voorbij is.
         }
 
         // 3. STRATEGY PATTERN: Voer het algoritme uit!
@@ -190,7 +195,7 @@ public class Gast extends Persoon {
     private void resetNaEvacuatie() {
         setEvacuatieBegonnen(false);
         useNormalStrategy();
-        if (state == State.EVACUATIE || state == State.VERLAAT_HOTEL) {
+        if (state == State.EVACUATIE || state == State.VERLAAT_HOTEL || state == State.BUITEN) {
             state = State.WANDELEN;
             setHuidigeActiviteit("🚶 Wandel");
             this.x = 1.5;
@@ -218,6 +223,7 @@ public class Gast extends Persoon {
             case GAAT_NAAR_LOBBY -> setHuidigeActiviteit("✗ Check-out");
             case VERLAAT_HOTEL -> setHuidigeActiviteit("👋 Vertrekt");
             case EVACUATIE -> setHuidigeActiviteit("🔥 EVACUATIE!");
+            case BUITEN -> setHuidigeActiviteit("👋 Buiten hotel");
             case IN_FACILITEIT -> setHuidigeActiviteit(huidigerFaciliteitType == null ? "" : "📍 " + huidigerFaciliteitType);
         }
     }
@@ -267,7 +273,7 @@ public class Gast extends Persoon {
     public int getMaxX() { return maxX; }
     @Override
     public int getMaxY() { return maxY; }
-    public void setStateToLeft() { this.state = State.VERLAAT_HOTEL; } //polymorfisme
+    public void setStateToLeft() { this.state = State.BUITEN; } //polymorfisme
     public void setGridBounds(int maxX, int maxY) { this.maxX = maxX; this.maxY = maxY; }
     public void setLift(Lift lift) { this.lift = lift; }
     public void setHotel(Hotel hotel) { this.hotel = hotel; }

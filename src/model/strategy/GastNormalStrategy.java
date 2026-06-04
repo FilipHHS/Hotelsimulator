@@ -30,6 +30,7 @@ public class GastNormalStrategy implements IMovementStrategy {
             case GAAT_NAAR_LOBBY -> beweegNaarLobby(gast);
             case VERLAAT_HOTEL -> beweegNaarExit(gast);
             case EVACUATIE -> { /* Wordt afgehandeld door EvacuationMovement */ }
+            case BUITEN -> { /* Veilig buiten: blijf staan. */ }
             case IN_LIFT -> { /* Wordt bovenaan afgevangen */ }
         }
     }
