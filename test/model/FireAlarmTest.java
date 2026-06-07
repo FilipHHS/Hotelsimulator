@@ -2,13 +2,52 @@ package model;
 
 import model.*;
 import model.personen.*;
+import org.junit.jupiter.api.Test;
 import ui.HotelPanel;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Quick Test: Fire Alarm System
  * US4.3: Brandalarm - Simulation Test
  */
 public class FireAlarmTest {
+
+    @Test
+    void iedereenBlijftBuitenStilstaanTijdensBrandalarm() {
+        Hotel hotel = new Hotel(new String[7][10], 10, 7, List.of());
+        Gast gast = new GastBuilder()
+                .naam("Testgast")
+                .hotel(hotel)
+                .gridBounds(hotel.getBreedte(), hotel.getHoogte())
+                .startPos(1.5, 6.0)
+                .build();
+        Schoonmaker schoonmaker = new Schoonmaker("Testschoonmaker", 1, 6);
+        schoonmaker.setGridBounds(hotel.getBreedte(), hotel.getHoogte());
+        schoonmaker.setStartPositie(1.5, 6.0);
+
+        gast.activeerFireAlarm();
+        schoonmaker.activeerFireAlarm();
+        gast.onTick();
+        schoonmaker.onTick();
+
+        double gastX = gast.getX();
+        double gastY = gast.getY();
+        double schoonmakerX = schoonmaker.getX();
+        double schoonmakerY = schoonmaker.getY();
+
+        for (int i = 0; i < 10; i++) {
+            gast.onTick();
+            schoonmaker.onTick();
+        }
+
+        assertEquals(gastX, gast.getX(), "De gast moet buiten stilstaan.");
+        assertEquals(gastY, gast.getY(), "De gast moet buiten stilstaan.");
+        assertEquals(schoonmakerX, schoonmaker.getX(), "De schoonmaker moet buiten stilstaan.");
+        assertEquals(schoonmakerY, schoonmaker.getY(), "De schoonmaker moet buiten stilstaan.");
+    }
     
     public static void main(String[] args) throws Exception {
         System.out.println("\n╔════════════════════════════════════════════════════════════════╗");
@@ -170,4 +209,3 @@ public class FireAlarmTest {
             inLobby, evacuating, notEvacuating);
     }
 }
-

@@ -1,7 +1,6 @@
 package ui;
 
 import model.personen.*;
-
 import model.Area;
 import model.EventBusImpl;
 import model.Hotel;
@@ -10,7 +9,6 @@ import model.personen.Persoon;
 import model.Lift;
 import model.personen.Schoonmaker;
 import model.Kamer;
-
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
 import java.awt.*;
