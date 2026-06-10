@@ -12,26 +12,26 @@ public class GastNormalStrategy implements IMovementStrategy {
 
     @Override
     public void beweeg(Persoon persoon) {
-        if (!(persoon instanceof Gast)) return;
+        if (!(persoon instanceof Gast)) return; // SS1.1: type-check — deze strategy werkt alleen op gasten
         Gast gast = (Gast) persoon;
 
-        if (gast.isInLift()) {
+        if (gast.isInLift()) { // SS1.2: in de lift? → liftlogica en klaar voor deze tick
             handleLiftLogic(gast);
             return;
         }
 
-        switch (gast.getGastState()) {
-            case WANDELEN -> randomWalk(gast);
-            case NAAR_LIFT_WACHTEN -> beweegNaarLiftTrap(gast);
-            case WACHTEN_OP_VERVOER -> wachtOpVervoer(gast);
-            case GAAT_NAAR_FACILITEIT -> beweegNaarFaciliteit(gast);
-            case IN_FACILITEIT -> zitInFaciliteit(gast);
-            case GAAT_NAAR_KAMER -> beweegNaarKamer(gast);
-            case GAAT_NAAR_LOBBY -> beweegNaarLobby(gast);
-            case VERLAAT_HOTEL -> beweegNaarExit(gast);
-            case EVACUATIE -> { /* Wordt afgehandeld door EvacuationMovement */ }
-            case BUITEN -> { /* Veilig buiten: blijf staan. */ }
-            case IN_LIFT -> { /* Wordt bovenaan afgevangen */ }
+        switch (gast.getGastState()) { // SS1.3: state machine — kies het deelalgoritme op basis van de state
+            case WANDELEN -> randomWalk(gast); // SS1.4: random links/rechts wandelen (40/40/20), 2% kans op verdiepingswissel
+            case NAAR_LIFT_WACHTEN -> beweegNaarLiftTrap(gast); // SS1.5: loop naar TRAP_X of LIFT_WAIT_X → dan WACHTEN_OP_VERVOER
+            case WACHTEN_OP_VERVOER -> wachtOpVervoer(gast); // SS1.6: trap → meteen verdieping wisselen; lift → instappen als idle
+            case GAAT_NAAR_FACILITEIT -> beweegNaarFaciliteit(gast); // SS1.7: loop naar faciliteitX → IN_FACILITEIT + duur 20-50 ticks
+            case IN_FACILITEIT -> zitInFaciliteit(gast); // SS1.8: duur aftellen → daarna naar kamer of WANDELEN
+            case GAAT_NAAR_KAMER -> beweegNaarKamer(gast); // SS1.9: eerst juiste verdieping, dan naar destX → WANDELEN + roomStayTimer
+            case GAAT_NAAR_LOBBY -> beweegNaarLobby(gast); // SS1.10: naar lobbyverdieping → naar LOBBY_X → VERLAAT_HOTEL
+            case VERLAAT_HOTEL -> beweegNaarExit(gast); // SS1.11: elke tick x - speed → loopt links het scherm uit
+            case EVACUATIE -> { /* SS1.12: leeg — wordt afgehandeld door EvacuationMovement */ }
+            case BUITEN -> { /* SS1.13: leeg — veilig buiten, blijf staan */ }
+            case IN_LIFT -> { /* SS1.14: leeg — al afgevangen bij SS1.2 */ }
         }
     }
 

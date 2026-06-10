@@ -81,7 +81,7 @@ public class Simulator {
                 hteClock.addListener(persoon);
             }
             if (persoon instanceof Gast gast) {
-                gast.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy());
+                gast.setMovementStrategies(createGuestMovementStrategy(), createEvacuationMovementStrategy()); // SS0.C: injectie via Simulator (overschrijft de default uit de constructor)
                 gast.setLift(lift);
                 gast.setHotel(hotel);
                 gast.setEventBus(eventBus);  // Set event bus
@@ -94,7 +94,7 @@ public class Simulator {
                 }
             }
             if (persoon instanceof Schoonmaker schoonmaker) {
-                schoonmaker.setMovementStrategies(createCleanerMovementStrategy(), createEvacuationMovementStrategy());
+                schoonmaker.setMovementStrategies(createCleanerMovementStrategy(), createEvacuationMovementStrategy()); // SS0.C: injectie via Simulator
                 schoonmaker.setLift(lift);
                 schoonmaker.setHotel(hotel);
                 schoonmaker.setEventBus(eventBus);
@@ -114,7 +114,7 @@ public class Simulator {
             return;
         }
 
-        hteClock.tick();
+        hteClock.tick(); // SS0.1: klok tikt → roept onTick() aan op elke Persoon (TickListener)
         List<Persoon> teVerwijderen = hotel.getPersonen().stream()
                 .filter(p -> (p instanceof Gast || p instanceof Schoonmaker) && p.getX() < -2.0)
                 .toList();

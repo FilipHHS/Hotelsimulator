@@ -34,7 +34,7 @@ public class Schoonmaker extends Persoon {
         this.destY = 5.5;
 
         // STRATEGY PATTERN: Injecteer normale + evacuatie-strategie in de context
-        setMovementStrategies(new SchoonmakerNormalStrategy(), new EvacuationMovement());
+        setMovementStrategies(new SchoonmakerNormalStrategy(), new EvacuationMovement()); // SS0.B: injectie normale + evacuatie-strategie
 
         System.out.println("[Schoonmaker] " + naam + " is in de Opslag (7,5)");
     }
@@ -44,15 +44,15 @@ public class Schoonmaker extends Persoon {
         updateActiviteitLabel();
 
         // 1. Brandalarm is geactiveerd: Wissel naar vlucht-strategie
-        if (fireAlarmActive && !isEvacuating()) {
+        if (fireAlarmActive && !isEvacuating()) { // SS0.2: brandalarm actief en nog niet aan het evacueren?
             startEvacuatie();
-            useEvacuationStrategy();
+            useEvacuationStrategy(); // SS0.3 + SS4.2: WISSEL naar evacuatiegedrag
         }
 
         // 2. Brandalarm is weer voorbij: Reset naar normaal gedrag
         if (!fireAlarmActive && isEvacuatieBegonnen()) {
             setEvacuatieBegonnen(false);
-            useNormalStrategy();
+            useNormalStrategy(); // SS0.4 + SS4.6: alarm voorbij → terug naar normaal gedrag
             this.state = State.VRIJ;
             setHuidigeActiviteit("⏳ Idle");
             this.x = 7.5; // Terug naar opslag
@@ -64,7 +64,7 @@ public class Schoonmaker extends Persoon {
         }
 
         // 3. STRATEGY PATTERN: Voer de actieve strategie uit!
-        performMovement();
+        performMovement(); // SS0.5: voer de ACTIEVE strategie uit
     }
 
     private void updateActiviteitLabel() {

@@ -43,7 +43,7 @@ public abstract class Persoon implements TickListener {
      */
     public void performMovement() {
         if (movementContext != null) {
-            movementContext.beweeg(this);   // context kiest de juiste strategie
+            movementContext.beweeg(this);   // SS0.6: Persoon delegeert beweging naar de context — weet zelf niet HOE er gelopen wordt
         }
     }
 
@@ -52,7 +52,7 @@ public abstract class Persoon implements TickListener {
      * De context start standaard met de normale strategie.
      */
     public void setMovementStrategies(IMovementStrategy normal, IMovementStrategy evacuation) {
-        this.movementContext = new MovementContext(normal, evacuation);
+        this.movementContext = new MovementContext(normal, evacuation); // SS0.A/B/C: strategy-injectie — concrete algoritmes komen van buitenaf
     }
 
     /**

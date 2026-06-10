@@ -53,7 +53,7 @@ public class Gast extends Persoon {
         this.kleur = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
 
         // STRATEGY PATTERN: Injecteer normale + evacuatie-strategie in de context
-        setMovementStrategies(new GastNormalStrategy(), new EvacuationMovement());
+        setMovementStrategies(new GastNormalStrategy(), new EvacuationMovement()); // SS0.A: injectie normale + evacuatie-strategie
     }
 
     @Override
@@ -62,12 +62,12 @@ public class Gast extends Persoon {
         if (godzillaTicksRemaining > 0) godzillaTicksRemaining--;
 
         // 2. Bepaal of we van strategie moeten wisselen wegens noodsituaties
-        if (fireAlarmActive && !isEvacuating()) {
+        if (fireAlarmActive && !isEvacuating()) { // SS0.2: brandalarm actief en nog niet aan het evacueren?
             startEvacuatie();
-            useEvacuationStrategy();
+            useEvacuationStrategy(); // SS0.3 + SS4.2: WISSEL — context zet currentStrategy = evacuationStrategy
         }
         else if (!fireAlarmActive && isEvacuatieBegonnen()) {
-            resetNaEvacuatie();
+            resetNaEvacuatie(); // SS0.4: alarm voorbij → reset + terug naar normale strategy
         }
 
         if (fireAlarmActive && state == State.BUITEN) {
@@ -76,7 +76,7 @@ public class Gast extends Persoon {
         }
 
         // 3. STRATEGY PATTERN: Voer het algoritme uit!
-        performMovement();
+        performMovement(); // SS0.5: voer de ACTIEVE strategie uit (welke dat is, weet de Gast niet)
 
         // 4. Update visuele state
         updateLoungeStayTicks();
